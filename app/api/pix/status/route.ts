@@ -28,12 +28,13 @@ export async function GET(request: NextRequest) {
     }
 
     // Tentar diferentes endpoints possíveis conforme documentação PushinPay
+    // Nota: Algumas APIs usam o mesmo endpoint de criação com GET para consultar
     const endpoints = [
+      `${PUSHINPAY_API_URL}/api/pix/cashIn/${pixId}`, // Mesmo endpoint de criação, mas com GET
       `${PUSHINPAY_API_URL}/api/pix/status/${pixId}`,
       `${PUSHINPAY_API_URL}/pix/status/${pixId}`,
       `${PUSHINPAY_API_URL}/api/pix/${pixId}`,
       `${PUSHINPAY_API_URL}/pix/${pixId}`,
-      `${PUSHINPAY_API_URL}/api/pix/cashIn/${pixId}`,
     ];
     
     let lastError: any = null;
@@ -164,16 +165,19 @@ export async function GET(request: NextRequest) {
     console.error("PIX ID:", pixId);
     console.error("API URL:", PUSHINPAY_API_URL);
     console.error("Token presente:", PUSHINPAY_TOKEN ? "Sim (primeiros 20 chars: " + PUSHINPAY_TOKEN.substring(0, 20) + "...)" : "Não");
+    console.error("Endpoints tentados:", endpoints.join(", "));
     
     return NextResponse.json(
       { 
         error: "Erro ao consultar PIX - todos os endpoints falharam", 
         details: lastError,
-        message: "Verifique se as variáveis de ambiente estão configuradas no Vercel e se o token está correto",
+        message: "O webhook ainda funcionará para notificar quando o pagamento for confirmado. Verifique os logs do Vercel para mais detalhes sobre os endpoints tentados.",
         pixId: pixId,
         apiUrl: PUSHINPAY_API_URL,
         tokenConfigured: !!PUSHINPAY_TOKEN,
-        endpointsTried: endpoints.length
+        endpointsTried: endpoints.length,
+        endpoints: endpoints,
+        note: "O pagamento será detectado via webhook mesmo se o polling falhar. Consulte a documentação da PushinPay para o endpoint correto de consulta de status."
       },
       { status: 500 }
     );
