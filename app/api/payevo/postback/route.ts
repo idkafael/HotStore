@@ -9,9 +9,17 @@ export const dynamic = 'force-dynamic';
 
 export async function POST(request: NextRequest) {
   try {
-    const payload: PayevoWebhookPayload = await request.json();
+    // Log do IP e headers para debug
+    const clientIp = request.headers.get('x-forwarded-for') || request.headers.get('x-real-ip') || 'unknown';
+    const userAgent = request.headers.get('user-agent') || 'unknown';
     
-    console.log('📥 Postback Payevo recebido:', JSON.stringify(payload, null, 2));
+    console.log('📥 Postback Payevo recebido!');
+    console.log('📍 IP:', clientIp);
+    console.log('🌐 User-Agent:', userAgent);
+    
+    const payload: PayevoWebhookPayload = await request.json();
+
+    console.log('📦 Payload completo:', JSON.stringify(payload, null, 2));
 
     // Verificar estrutura do postback conforme documentação
     if (payload.type !== 'transaction' || !payload.data) {
