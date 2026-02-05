@@ -47,7 +47,8 @@ export default function PaymentModal({ isOpen, onClose, model, price = 1.00 }: P
         const response = await fetch(`/api/pix/status-local?id=${pixData.id}`);
         const data = await response.json();
         
-        if (response.ok && data.status) {
+        // Sempre atualizar o status, mesmo se for 404 (retorna status "created" como padrão)
+        if (data.status) {
           setPixStatus(data.status);
 
           if (data.status === "paid") {
@@ -69,10 +70,9 @@ export default function PaymentModal({ isOpen, onClose, model, price = 1.00 }: P
             }
           }
         }
-        // Se não encontrar (404), o PIX ainda não foi processado pelo webhook
-        // Continuar tentando até receber a notificação
+        // Se não encontrar no cache, continuar tentando - o webhook atualizará quando pago
       } catch (error) {
-        // Silenciosamente ignorar erros de rede
+        // Silenciosamente ignorar erros de rede - continuar tentando
       }
     }, 3000); // Verificar a cada 3 segundos (rápido pois é consulta local)
 

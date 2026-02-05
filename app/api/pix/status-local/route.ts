@@ -19,13 +19,21 @@ export async function GET(request: NextRequest) {
     const status = getPixStatusWithCleanup(pixId);
 
     if (!status) {
-      return NextResponse.json(
-        { 
-          error: "PIX não encontrado",
-          message: "O PIX ainda não foi registrado ou foi removido do cache"
-        },
-        { status: 404 }
-      );
+      console.log(`⚠️ PIX ${pixId} não encontrado no armazenamento local`);
+      console.log("Isso pode acontecer se o servidor foi reiniciado ou o PIX foi criado antes do deploy");
+      console.log("O webhook ainda funcionará quando o pagamento for confirmado");
+      
+      // Retornar status "created" como padrão se não encontrar
+      // O webhook atualizará quando o pagamento for confirmado
+      return NextResponse.json({
+        id: pixId,
+        status: "created" as const, // Status padrão - webhook atualizará quando pago
+        qr_code: "",
+        value: 0,
+        qr_code_base64: "",
+        split_rules: [],
+        note: "Status não encontrado no cache local - aguardando webhook"
+      } as PixStatusResponse);
     }
 
     // Retornar no formato esperado pelo frontend
