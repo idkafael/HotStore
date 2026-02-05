@@ -42,20 +42,35 @@ export default function PaymentModal({ isOpen, onClose, model, price = 1.00 }: P
 
     // Polling do endpoint local que consulta o armazenamento atualizado pelo webhook
     // O webhook atualiza o armazenamento, e este polling consulta localmente
+    // Se não encontrar no cache, o endpoint consulta a API PushinPay como fallback
     const interval = setInterval(async () => {
       try {
+        console.log(`🔄 Verificando status do PIX ${pixData.id}...`);
         const response = await fetch(`/api/pix/status-local?id=${pixData.id}`);
         const data = await response.json();
         
+        console.log(`📊 Resposta do status-local:`, {
+          status: data.status,
+          id: data.id,
+          note: data.note
+        });
+        
         // Sempre atualizar o status, mesmo se for 404 (retorna status "created" como padrão)
         if (data.status) {
+          const previousStatus = pixStatus;
           setPixStatus(data.status);
+          
+          if (previousStatus !== data.status) {
+            console.log(`✅ Status mudou de "${previousStatus}" para "${data.status}"`);
+          }
 
           if (data.status === "paid") {
-            // Pagamento confirmado via webhook - liberar acesso automaticamente
+            console.log(`🎉 PAGAMENTO CONFIRMADO! Liberando conteúdo...`);
+            // Pagamento confirmado via webhook ou API - liberar acesso automaticamente
             if (model.entregavel) {
               // Abrir link automaticamente após 2 segundos
               setTimeout(() => {
+                console.log(`🔗 Abrindo entregável: ${model.entregavel}`);
                 window.open(model.entregavel, "_blank");
                 // Fechar modal após 3 segundos
                 setTimeout(() => {
@@ -68,11 +83,16 @@ export default function PaymentModal({ isOpen, onClose, model, price = 1.00 }: P
                 onClose();
               }, 3000);
             }
+          } else if (data.status === "created") {
+            console.log(`⏳ PIX ainda aguardando pagamento (status: created)`);
           }
+        } else {
+          console.warn(`⚠️ Resposta sem status:`, data);
         }
-        // Se não encontrar no cache, continuar tentando - o webhook atualizará quando pago
-      } catch (error) {
-        // Silenciosamente ignorar erros de rede - continuar tentando
+        // Se não encontrar no cache, continuar tentando - o webhook ou API atualizará quando pago
+      } catch (error: any) {
+        console.error(`❌ Erro ao verificar status do PIX:`, error.message);
+        // Continuar tentando mesmo com erro
       }
     }, 3000); // Verificar a cada 3 segundos (rápido pois é consulta local)
 

@@ -21,10 +21,14 @@ export async function GET(request: NextRequest) {
 
     // Primeiro, tentar consultar o armazenamento local (atualizado pelo webhook)
     let status = getPixStatusWithCleanup(pixId);
+    console.log(`📦 Cache local para PIX ${pixId}:`, status ? `status=${status.status}` : "não encontrado");
 
     // Se não encontrar no cache OU se o status ainda for "created" E já passou 1 minuto desde última consulta,
     // tentar consultar a API PushinPay diretamente como fallback
-    if ((!status || status.status === "created") && canCheckApi(pixId) && PUSHINPAY_TOKEN) {
+    const canCheck = canCheckApi(pixId);
+    console.log(`⏱️ Pode consultar API? ${canCheck} (rate limit: 1 minuto)`);
+    
+    if ((!status || status.status === "created") && canCheck && PUSHINPAY_TOKEN) {
       console.log(`🔄 PIX ${pixId} não encontrado no cache ou ainda 'created', consultando API PushinPay como fallback...`);
       
       // Endpoint correto conforme documentação: GET /api/pix/{id}
@@ -44,11 +48,16 @@ export async function GET(request: NextRequest) {
           const responseText = await response.text();
           try {
             const data = JSON.parse(responseText);
-            console.log(`✅ Status consultado da API PushinPay: ${data.status}`);
+            console.log(`✅ Status consultado da API PushinPay: ${data.status} para PIX ${pixId}`);
+            console.log(`📋 Dados completos:`, JSON.stringify(data, null, 2));
             
             // Atualizar o armazenamento local com o status da API
             updatePixStatus(pixId, data.status);
             markApiCheck(pixId); // Marcar que consultamos a API
+            
+            if (data.status === "paid") {
+              console.log(`🎉 PIX ${pixId} FOI PAGO! Status atualizado no cache.`);
+            }
             
             return NextResponse.json({
               id: data.id || pixId,
@@ -59,21 +68,27 @@ export async function GET(request: NextRequest) {
               split_rules: data.split_rules || [],
             } as PixStatusResponse);
           } catch (parseError) {
-            console.error("Erro ao fazer parse da resposta da API:", parseError);
+            console.error(`❌ Erro ao fazer parse da resposta da API:`, parseError);
+            console.error(`📄 Resposta recebida:`, responseText.substring(0, 500));
           }
         } else if (response.status === 404) {
           // Conforme documentação, 404 retorna array vazio []
-          console.log(`PIX ${pixId} não encontrado na API PushinPay (404)`);
+          console.log(`⚠️ PIX ${pixId} não encontrado na API PushinPay (404)`);
           markApiCheck(pixId); // Marcar mesmo assim para não tentar novamente imediatamente
         } else {
-          console.error(`Erro ao consultar API: ${response.status}`);
+          const responseText = await response.text().catch(() => "");
+          console.error(`❌ Erro ao consultar API: ${response.status}`);
+          console.error(`📄 Resposta:`, responseText.substring(0, 500));
         }
       } catch (fetchError: any) {
-        console.error(`Erro ao conectar com API PushinPay:`, fetchError.message);
+        console.error(`❌ Erro ao conectar com API PushinPay:`, fetchError.message);
+        console.error(`🔗 Endpoint tentado: ${apiEndpoint}`);
         // Continuar e retornar status do cache se existir
       }
-    } else if (!canCheckApi(pixId)) {
+    } else if (!canCheck) {
       console.log(`⏱️ Rate limiting: última consulta da API foi há menos de 1 minuto para PIX ${pixId}`);
+    } else if (!PUSHINPAY_TOKEN) {
+      console.log(`⚠️ Token PushinPay não configurado, não é possível consultar API`);
     }
 
     // Se encontrou no cache, retornar

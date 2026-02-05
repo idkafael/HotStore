@@ -65,12 +65,20 @@ export function getPixStatusWithCleanup(pixId: string): PixStatus | null {
 export function canCheckApi(pixId: string): boolean {
   const status = getPixStatus(pixId);
   if (!status || !status.lastApiCheck) {
+    console.log(`✅ PIX ${pixId} nunca foi consultado na API, pode consultar agora`);
     return true; // Nunca consultou, pode consultar
   }
   
   const now = new Date();
   const oneMinuteAgo = new Date(now.getTime() - 60 * 1000);
-  return status.lastApiCheck < oneMinuteAgo;
+  const canCheck = status.lastApiCheck < oneMinuteAgo;
+  
+  if (!canCheck) {
+    const secondsSinceLastCheck = Math.floor((now.getTime() - status.lastApiCheck.getTime()) / 1000);
+    console.log(`⏱️ Rate limiting ativo para PIX ${pixId}: última consulta há ${secondsSinceLastCheck}s (limite: 60s)`);
+  }
+  
+  return canCheck;
 }
 
 // Marcar que consultamos a API (para rate limiting)
