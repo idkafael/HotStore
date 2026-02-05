@@ -389,16 +389,19 @@ export default function PaymentModal({ isOpen, onClose, model, price = 1.00 }: P
                   )}
                 </div>
 
-                {/* Payevo retorna qrcode como link, não base64 */}
+                {/* Payevo retorna qrcode como link - usar img nativo para melhor compatibilidade */}
                 {(pixData.pix?.qrcode || pixData.qr_code) && (
                   <div className="flex justify-center bg-white p-4 rounded-lg">
-                    <Image
+                    <img
                       src={pixData.pix?.qrcode || pixData.qr_code || ''}
                       alt="QR Code PIX"
-                      width={256}
-                      height={256}
-                      className="w-64 h-64"
-                      unoptimized
+                      className="w-64 h-64 object-contain"
+                      onError={(e) => {
+                        console.error('Erro ao carregar QR code:', pixData.pix?.qrcode || pixData.qr_code);
+                        // Tentar gerar QR code a partir do código PIX se o link falhar
+                        const qrCodeUrl = `https://api.qrserver.com/v1/create-qr-code/?size=256x256&data=${encodeURIComponent(pixData.qr_code || '')}`;
+                        (e.target as HTMLImageElement).src = qrCodeUrl;
+                      }}
                     />
                   </div>
                 )}
