@@ -78,14 +78,13 @@ export default function PaymentModal({ isOpen, onClose, model, price = 1.00 }: P
         const paidAt = data.paid_at;
 
         console.log('📊 Status do pagamento SyncPay:', status);
+        console.log('📊 PaidAt:', paidAt);
 
-        // SyncPay: pagamento confirmado quando status for 'paid' ou 'completed'
+        // SyncPay: pagamento confirmado APENAS quando status for 'completed' ou 'paid'
+        // NÃO considerar paid_at sozinho, pois pode estar preenchido mesmo com status pending
         const isPagamentoConfirmado = 
           status === 'paid' || 
-          status === 'completed' || 
-          status === 'approved' || 
-          status === 'confirmed' ||
-          (paidAt !== null && paidAt !== undefined && paidAt !== '');
+          status === 'completed';
 
         if (isPagamentoConfirmado) {
           console.log('✅✅✅ PAGAMENTO CONFIRMADO! Liberando conteúdo...');
