@@ -89,7 +89,7 @@ export default function Home() {
     <div className="min-h-screen bg-black">
       <Header />
 
-      <main className="container mx-auto px-4 py-8 pt-24">
+      <main className="container mx-auto px-4 py-8 pt-28">
         <div className="mb-8">
           <h1 className="text-3xl md:text-4xl font-bold text-white mb-2">
             Bem Vindos a Hot Store Modelos
