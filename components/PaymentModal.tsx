@@ -63,17 +63,19 @@ export default function PaymentModal({ isOpen, onClose, model, price = 1.00 }: P
         const data = await response.json();
         console.log('📥 Resposta completa da API:', JSON.stringify(data, null, 2));
         
-        const transactionData = data.data || data;
-        let status = transactionData.status?.toLowerCase() || data.status?.toLowerCase();
+        // Conforme documentação oficial, o retorno é igual ao de criar PIX
+        // O status está diretamente no objeto raiz: { id, status, value, ... }
+        let status = data.status?.toLowerCase();
         
         console.log('🔍 Debug - Extraindo status:', {
           'data.status': data.status,
-          'transactionData.status': transactionData.status,
-          'status final': status
+          'status.toLowerCase()': status,
+          'tipo': typeof data.status
         });
         
         if (!status || status === 'unknown') {
           status = 'pending';
+          console.warn('⚠️ Status não encontrado ou desconhecido, usando "pending"');
         }
         
         console.log('📊 Status do pagamento PushinPay:', status);
