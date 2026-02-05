@@ -40,6 +40,19 @@ export default function PaymentModal({ isOpen, onClose, model, price = 1.00 }: P
       return;
     }
 
+    // Verificar se o QR code expirou
+    const expirationDate = pixData.pix?.expirationDate;
+    if (expirationDate) {
+      const expiration = new Date(expirationDate);
+      const now = new Date();
+      if (now > expiration) {
+        console.log('⏰ QR Code expirado!');
+        setPixStatus("expired");
+        setError("O QR Code expirou. Por favor, gere um novo pagamento.");
+        return;
+      }
+    }
+
     // Polling Payevo - verificar status a cada 3 segundos
     const interval = setInterval(async () => {
       try {
