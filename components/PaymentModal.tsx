@@ -43,8 +43,9 @@ export default function PaymentModal({ isOpen, onClose, model, price = 1.00 }: P
     const interval = setInterval(async () => {
       try {
         const response = await fetch(`/api/pix/status?id=${pixData.id}`);
+        const data = await response.json();
+        
         if (response.ok) {
-          const data = await response.json();
           setPixStatus(data.status);
 
           if (data.status === "paid") {
@@ -65,9 +66,14 @@ export default function PaymentModal({ isOpen, onClose, model, price = 1.00 }: P
               }, 3000);
             }
           }
+        } else {
+          // Se houver erro, logar mas continuar tentando
+          console.error("Erro ao verificar status do PIX:", data.error || data.message);
+          // Não atualizar o status se houver erro, apenas logar
         }
       } catch (error) {
         console.error("Erro ao verificar status do PIX:", error);
+        // Continuar tentando mesmo em caso de erro de rede
       }
     }, 3000); // Verificar a cada 3 segundos
 

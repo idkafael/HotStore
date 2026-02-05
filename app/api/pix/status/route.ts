@@ -17,8 +17,12 @@ export async function GET(request: NextRequest) {
     }
 
     if (!PUSHINPAY_TOKEN) {
+      console.error("❌ Token PushinPay não configurado no ambiente");
       return NextResponse.json(
-        { error: "Token PushinPay não configurado" },
+        { 
+          error: "Token PushinPay não configurado",
+          message: "Configure PUSHINPAY_TOKEN nas variáveis de ambiente do Vercel"
+        },
         { status: 500 }
       );
     }
@@ -62,6 +66,35 @@ export async function GET(request: NextRequest) {
           }
         } else {
           // Se não foi bem-sucedida, tentar próximo endpoint
+          // Mas se for erro 401 (não autorizado) ou 403 (proibido), provavelmente é problema de token
+          if (response.status === 401 || response.status === 403) {
+            console.error(`❌ Erro de autenticação (${response.status}) no endpoint: ${apiEndpoint}`);
+            console.error("Resposta:", responseText.substring(0, 500));
+            // Não continuar tentando outros endpoints se for erro de autenticação
+            try {
+              const errorData = JSON.parse(responseText);
+              return NextResponse.json(
+                {
+                  error: "Erro de autenticação com PushinPay",
+                  message: errorData.message || "Token inválido ou não autorizado",
+                  details: errorData,
+                  status: response.status
+                },
+                { status: response.status }
+              );
+            } catch {
+              return NextResponse.json(
+                {
+                  error: "Erro de autenticação com PushinPay",
+                  message: "Verifique se o token está correto nas variáveis de ambiente do Vercel",
+                  details: responseText.substring(0, 200),
+                  status: response.status
+                },
+                { status: response.status }
+              );
+            }
+          }
+          
           try {
             const errorData = JSON.parse(responseText);
             lastError = {
@@ -70,7 +103,7 @@ export async function GET(request: NextRequest) {
               error: errorData.message || "Erro ao consultar PIX",
               details: errorData
             };
-            console.log("Endpoint falhou, tentando próximo...");
+            console.log(`Endpoint ${apiEndpoint} falhou com status ${response.status}, tentando próximo...`);
             continue;
           } catch {
             lastError = {
@@ -93,11 +126,14 @@ export async function GET(request: NextRequest) {
       }
     }
 
-    // Se todos os endpoints falharam, retornar erro
+    // Se todos os endpoints falharam, retornar erro com mais detalhes
+    console.error("❌ Todos os endpoints falharam:", lastError);
     return NextResponse.json(
       { 
         error: "Erro ao consultar PIX - todos os endpoints falharam", 
-        details: lastError
+        details: lastError,
+        message: "Verifique se as variáveis de ambiente estão configuradas no Vercel",
+        pixId: pixId
       },
       { status: 500 }
     );
