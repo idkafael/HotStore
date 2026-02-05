@@ -40,18 +40,18 @@ export default function PaymentModal({ isOpen, onClose, model, price = 1.00 }: P
       return;
     }
 
-    // Polling menos frequente (10 segundos) já que o webhook é mais confiável
-    // O webhook será o método principal de detecção de pagamento
+    // Polling do endpoint local que consulta o armazenamento atualizado pelo webhook
+    // O webhook atualiza o armazenamento, e este polling consulta localmente
     const interval = setInterval(async () => {
       try {
-        const response = await fetch(`/api/pix/status?id=${pixData.id}`);
+        const response = await fetch(`/api/pix/status-local?id=${pixData.id}`);
         const data = await response.json();
         
         if (response.ok && data.status) {
           setPixStatus(data.status);
 
           if (data.status === "paid") {
-            // Pagamento confirmado - liberar acesso automaticamente
+            // Pagamento confirmado via webhook - liberar acesso automaticamente
             if (model.entregavel) {
               // Abrir link automaticamente após 2 segundos
               setTimeout(() => {
@@ -69,12 +69,12 @@ export default function PaymentModal({ isOpen, onClose, model, price = 1.00 }: P
             }
           }
         }
-        // Se houver erro, não fazer nada - o webhook vai detectar o pagamento
-        // Não logar erros para não poluir o console
+        // Se não encontrar (404), o PIX ainda não foi processado pelo webhook
+        // Continuar tentando até receber a notificação
       } catch (error) {
-        // Silenciosamente ignorar erros de polling - webhook é mais confiável
+        // Silenciosamente ignorar erros de rede
       }
-    }, 10000); // Verificar a cada 10 segundos (menos frequente)
+    }, 3000); // Verificar a cada 3 segundos (rápido pois é consulta local)
 
     return () => clearInterval(interval);
   }, [pixData, pixStatus, model.entregavel, onClose]);

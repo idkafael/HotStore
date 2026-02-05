@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { CreatePixRequest, CreatePixResponse } from "@/types/pix";
+import { updatePixStatus } from "@/lib/pixStatusStore";
 
 // A URL base da PushinPay
 // Baseado na documentação: https://app.theneo.io/pushinpay/pix/pix/criar-pix
@@ -119,6 +120,10 @@ export async function POST(request: NextRequest) {
             const data = JSON.parse(responseText);
             console.log("✅ PIX criado com sucesso! ID:", data.id);
             console.log("✅ Endpoint funcionando:", apiEndpoint);
+            
+            // Registrar PIX no armazenamento local com status inicial
+            updatePixStatus(data.id, data.status || "created");
+            
             return NextResponse.json(data as CreatePixResponse);
           } catch (parseError) {
             console.error("Erro ao fazer parse da resposta:", parseError);
