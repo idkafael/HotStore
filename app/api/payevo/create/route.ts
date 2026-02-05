@@ -49,7 +49,8 @@ export async function POST(request: NextRequest) {
       payload.customer = body.customer;
     }
 
-    // Basic Authentication conforme documentação
+    // Basic Authentication conforme documentação Payevo
+    // A documentação indica usar Basic Auth com a SECRET_KEY
     const authHeader = 'Basic ' + Buffer.from(PAYEVO_SECRET_KEY).toString('base64');
 
     const url = `${PAYEVO_API_URL}/functions/v1/transactions`;
@@ -57,7 +58,10 @@ export async function POST(request: NextRequest) {
     console.log('📤 Criando transação Payevo:', {
       url,
       amount: body.amount,
-      postbackUrl: postbackUrl || 'não configurado'
+      postbackUrl: postbackUrl || 'não configurado',
+      payload: JSON.stringify(payload, null, 2),
+      hasSecretKey: !!PAYEVO_SECRET_KEY,
+      secretKeyLength: PAYEVO_SECRET_KEY.length
     });
 
     const response = await fetch(url, {
@@ -75,16 +79,24 @@ export async function POST(request: NextRequest) {
     console.log('📥 Resposta:', responseText.substring(0, 500));
 
     if (!response.ok) {
+      console.error('❌ Erro na API Payevo:', {
+        status: response.status,
+        statusText: response.statusText,
+        responseText: responseText.substring(0, 1000)
+      });
+      
       try {
         const errorData = JSON.parse(responseText);
         return NextResponse.json({
           error: errorData.message || errorData.error || 'Erro ao criar transação',
-          details: errorData
+          details: errorData,
+          statusCode: response.status
         }, { status: response.status });
       } catch {
         return NextResponse.json({
           error: 'Erro ao criar transação',
-          details: responseText.substring(0, 500)
+          details: responseText.substring(0, 500),
+          statusCode: response.status
         }, { status: response.status });
       }
     }
@@ -115,9 +127,14 @@ export async function POST(request: NextRequest) {
     return NextResponse.json(adaptedResponse);
 
   } catch (error: any) {
-    console.error("Erro ao criar transação Payevo:", error);
+    console.error("❌ Erro ao criar transação Payevo:", error);
+    console.error("Stack:", error.stack);
     return NextResponse.json(
-      { error: error.message || "Erro interno do servidor" },
+      { 
+        error: "Erro interno ao criar transação",
+        message: error.message || "Erro desconhecido",
+        details: process.env.NODE_ENV === 'development' ? error.stack : undefined
+      },
       { status: 500 }
     );
   }

@@ -9,9 +9,13 @@ export default function Header() {
 
   useEffect(() => {
     // Verificar se o logo existe usando HTMLImageElement nativo
+    // Silenciosamente verificar sem gerar erro no console
     const img = document.createElement('img');
     img.onload = () => setLogoExists(true);
-    img.onerror = () => setLogoExists(false);
+    img.onerror = () => {
+      setLogoExists(false);
+      // Não logar erro - logo é opcional
+    };
     img.src = "/logo.png";
   }, []);
 
