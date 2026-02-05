@@ -195,6 +195,13 @@ export default function PaymentModal({ isOpen, onClose, model, price = 1.00 }: P
         } else {
           console.log('⚠️ Status:', status, '- Continuando verificação...');
         }
+        
+        // Parar polling após máximo de tentativas
+        if (pollCount >= maxPolls) {
+          console.log('⏰ Polling atingiu o limite máximo. Parando verificação automática.');
+          clearInterval(interval);
+          setError('Tempo limite de verificação atingido. Por favor, verifique o pagamento manualmente.');
+        }
       } catch (error: any) {
         console.error('Erro ao verificar pagamento:', error);
         // Continuar tentando mesmo com erro
