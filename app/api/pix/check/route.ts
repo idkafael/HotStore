@@ -35,63 +35,91 @@ export async function GET(request: NextRequest) {
     }
 
     try {
-      // Base URL da API PushinPay conforme projeto de referência
+      // Tentar diferentes endpoints possíveis
+      // 1. /transactions/{id} - conforme projeto de referência
+      // 2. /api/pix/{id} - conforme documentação oficial
       const apiBaseUrl = 'https://api.pushinpay.com.br/api';
-      const endpoint = `/transactions/${transactionId}`; // Conforme projeto de referência
-      const url = `${apiBaseUrl}${endpoint}`;
+      const endpoints = [
+        `/transactions/${transactionId}`, // Projeto de referência
+        `/pix/${transactionId}`, // Documentação oficial
+      ];
 
-      console.log(`Consultando status do PIX na PushinPay: ${url}`);
+      let lastError: any = null;
+      let statusData: any = null;
+      let successfulEndpoint = '';
 
-      // Fazer requisição direta à API conforme projeto de referência
-      const response = await fetch(url, {
-        method: 'GET',
-        headers: {
-          'Authorization': `Bearer ${PUSHINPAY_TOKEN}`,
-          'Accept': 'application/json',
-          'Content-Type': 'application/json'
+      for (const endpoint of endpoints) {
+        const url = `${apiBaseUrl}${endpoint}`;
+        console.log(`🔍 Tentando consultar status do PIX na PushinPay: ${url}`);
+
+        try {
+          // Fazer requisição direta à API
+          const response = await fetch(url, {
+            method: 'GET',
+            headers: {
+              'Authorization': `Bearer ${PUSHINPAY_TOKEN}`,
+              'Accept': 'application/json',
+              'Content-Type': 'application/json'
+            }
+          });
+
+          console.log(`📥 Status da resposta HTTP (${endpoint}):`, response.status, response.statusText);
+
+          if (response.status === 404) {
+            console.log(`⚠️ Transação não encontrada na PushinPay (404) no endpoint ${endpoint}`);
+            // Tentar próximo endpoint
+            continue;
+          }
+
+          if (!response.ok) {
+            const errorText = await response.text().catch(() => '');
+            console.error(`❌ Erro ${response.status} no endpoint ${endpoint}:`, errorText.substring(0, 200));
+            lastError = { endpoint, status: response.status, error: errorText.substring(0, 200) };
+            continue;
+          }
+
+          // Tentar parsear JSON
+          try {
+            const contentType = response.headers.get('content-type') || '';
+            
+            if (!contentType.includes('application/json')) {
+              const text = await response.text();
+              console.error(`❌ Resposta não é JSON no endpoint ${endpoint}. Content-Type:`, contentType);
+              lastError = { endpoint, error: 'Resposta não é JSON', contentType };
+              continue;
+            }
+            
+            statusData = await response.json();
+            successfulEndpoint = endpoint;
+            console.log(`✅ Sucesso no endpoint ${endpoint}!`);
+            break; // Sair do loop se conseguir
+          } catch (parseError) {
+            console.error(`❌ Erro ao parsear resposta JSON do endpoint ${endpoint}:`, parseError);
+            lastError = { endpoint, error: 'Erro ao parsear JSON' };
+            continue;
+          }
+        } catch (fetchError: any) {
+          console.error(`❌ Erro ao conectar com endpoint ${endpoint}:`, fetchError.message);
+          lastError = { endpoint, error: fetchError.message };
+          continue;
         }
-      });
+      }
 
-      console.log('📥 Status da resposta HTTP:', response.status, response.statusText);
-
-      if (response.status === 404) {
-        console.log('⚠️ Transação não encontrada na PushinPay (404)');
-        // Retorna array vazio conforme documentação da API
+      // Se nenhum endpoint funcionou, retornar erro
+      if (!statusData) {
+        console.error('❌ Todos os endpoints falharam ao consultar status');
+        if (lastError) {
+          return NextResponse.json({
+            error: 'Erro ao verificar pagamento',
+            message: 'Não foi possível consultar o status na PushinPay',
+            details: lastError
+          }, { status: 500 });
+        }
         return NextResponse.json([], { status: 404 });
       }
 
-      let statusData;
-      try {
-        const contentType = response.headers.get('content-type') || '';
-        
-        if (!contentType.includes('application/json')) {
-          const text = await response.text();
-          console.error('❌ Resposta não é JSON. Content-Type:', contentType);
-          return NextResponse.json({
-            error: 'Resposta da API não é JSON',
-            message: 'A API PushinPay retornou uma resposta que não é JSON',
-            contentType: contentType
-          }, { status: 500 });
-        }
-        
-        statusData = await response.json();
-      } catch (parseError) {
-        console.error('❌ Erro ao parsear resposta JSON:', parseError);
-        return NextResponse.json({
-          error: 'Erro ao processar resposta da API PushinPay',
-          message: 'A API retornou uma resposta inválida'
-        }, { status: 500 });
-      }
-      
-      console.log('📥 Resposta completa da consulta PushinPay:', JSON.stringify(statusData, null, 2));
-
-      if (!response.ok) {
-        console.error(`Erro ao consultar transação na PushinPay: ${response.status}`, statusData);
-        return NextResponse.json({
-          error: statusData.message || statusData.error || 'Erro ao verificar pagamento',
-          details: statusData
-        }, { status: response.status });
-      }
+      console.log(`📥 Resposta completa da consulta PushinPay (${successfulEndpoint}):`, JSON.stringify(statusData, null, 2));
+      console.log(`📊 Status retornado: ${statusData.status}`);
 
       // Atualizar armazenamento local com status da API
       updatePixStatus(statusData.id, statusData.status);

@@ -61,8 +61,16 @@ export default function PaymentModal({ isOpen, onClose, model, price = 1.00 }: P
         }
 
         const data = await response.json();
+        console.log('📥 Resposta completa da API:', JSON.stringify(data, null, 2));
+        
         const transactionData = data.data || data;
         let status = transactionData.status?.toLowerCase() || data.status?.toLowerCase();
+        
+        console.log('🔍 Debug - Extraindo status:', {
+          'data.status': data.status,
+          'transactionData.status': transactionData.status,
+          'status final': status
+        });
         
         if (!status || status === 'unknown') {
           status = 'pending';
