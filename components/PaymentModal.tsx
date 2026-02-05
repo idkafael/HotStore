@@ -200,44 +200,94 @@ export default function PaymentModal({ isOpen, onClose, model, price = 1.00 }: P
         </div>
 
         {!pixData ? (
-          <form onSubmit={handleSubmit} className="space-y-4">
+          <form onSubmit={handleSubmit} className="space-y-6">
+            {/* Método de Pagamento - Card Selecionável */}
             <div>
-              <label className="block text-white font-medium mb-2">
+              <label className="block text-white font-medium mb-3">
                 Método de Pagamento
               </label>
-              <select
-                value={paymentMethod}
-                onChange={(e) => setPaymentMethod(e.target.value)}
-                className="w-full bg-black border border-dark-border rounded px-4 py-2 text-white"
+              <div className="space-y-2">
+                <button
+                  type="button"
+                  onClick={() => setPaymentMethod("pix")}
+                  className={`w-full p-4 rounded-lg border-2 transition-all ${
+                    paymentMethod === "pix"
+                      ? "border-purple-primary bg-purple-primary/10"
+                      : "border-dark-border bg-black/50 hover:border-purple-primary/50"
+                  }`}
+                  disabled={isProcessing}
+                >
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center ${
+                        paymentMethod === "pix"
+                          ? "border-purple-primary bg-purple-primary"
+                          : "border-gray-500"
+                      }`}>
+                        {paymentMethod === "pix" && (
+                          <div className="w-2 h-2 rounded-full bg-white"></div>
+                        )}
+                      </div>
+                      <span className="text-white font-medium">PIX</span>
+                    </div>
+                    <span className="text-gray-400 text-sm">Pagamento instantâneo</span>
+                  </div>
+                </button>
+              </div>
+            </div>
+
+            {/* Orderbump - Card Selecionável */}
+            <div>
+              <label className="block text-white font-medium mb-3">
+                Adicionais
+              </label>
+              <button
+                type="button"
+                onClick={() => setIncludeLogoRemover(!includeLogoRemover)}
+                className={`w-full p-4 rounded-lg border-2 transition-all text-left ${
+                  includeLogoRemover
+                    ? "border-purple-primary bg-purple-primary/10"
+                    : "border-dark-border bg-black/50 hover:border-purple-primary/50"
+                }`}
                 disabled={isProcessing}
               >
-                <option value="pix">PIX</option>
-              </select>
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <div className={`w-5 h-5 rounded border-2 flex items-center justify-center ${
+                      includeLogoRemover
+                        ? "border-purple-primary bg-purple-primary"
+                        : "border-gray-500"
+                    }`}>
+                      {includeLogoRemover && (
+                        <svg className="w-3 h-3 text-white" fill="currentColor" viewBox="0 0 20 20">
+                          <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                        </svg>
+                      )}
+                    </div>
+                    <div>
+                      <span className="text-white font-medium block">Cortar Logo do Onlyfans</span>
+                      <span className="text-gray-400 text-sm">Remova logos automaticamente</span>
+                    </div>
+                  </div>
+                  <span className="text-purple-primary font-bold">
+                    + R$ {logoRemoverPrice.toFixed(2).replace(".", ",")}
+                  </span>
+                </div>
+              </button>
             </div>
 
-            <div className="bg-purple-primary/10 border border-purple-primary/30 rounded p-3 text-xs text-gray-300">
-              <label className="flex items-center gap-2 cursor-pointer">
-                <input
-                  type="checkbox"
-                  checked={includeLogoRemover}
-                  onChange={(e) => setIncludeLogoRemover(e.target.checked)}
-                  className="w-4 h-4"
-                />
-                <span>
-                  Cortar Logo do Onlyfans (+ R$ {logoRemoverPrice.toFixed(2).replace(".", ",")})
+            {/* Total */}
+            <div className="bg-dark-border/30 rounded-lg p-4 border border-dark-border">
+              <div className="flex items-center justify-between">
+                <span className="text-gray-300">Total</span>
+                <span className="text-2xl text-purple-primary font-bold">
+                  R$ {(price + (includeLogoRemover ? logoRemoverPrice : 0)).toFixed(2).replace(".", ",")}
                 </span>
-              </label>
-            </div>
-
-            <div className="text-center">
-              <p className="text-white font-medium mb-2">Total</p>
-              <p className="text-2xl text-purple-primary font-bold">
-                R$ {(price + (includeLogoRemover ? logoRemoverPrice : 0)).toFixed(2).replace(".", ",")}
-              </p>
+              </div>
             </div>
 
             {error && (
-              <div className="bg-red-500/10 border border-red-500/30 rounded p-3 text-red-400 text-sm">
+              <div className="bg-red-500/10 border border-red-500/30 rounded-lg p-3 text-red-400 text-sm">
                 {error}
               </div>
             )}
@@ -245,7 +295,7 @@ export default function PaymentModal({ isOpen, onClose, model, price = 1.00 }: P
             <button
               type="submit"
               disabled={isProcessing}
-              className="w-full bg-purple-primary hover:bg-purple-primary/80 text-white font-bold py-3 px-6 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              className="w-full bg-purple-primary hover:bg-purple-primary/80 text-white font-bold py-4 px-6 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed text-lg"
             >
               {isProcessing ? "Processando..." : "Gerar Pagamento"}
             </button>
