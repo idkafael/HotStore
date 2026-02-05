@@ -15,8 +15,12 @@ export async function POST(request: NextRequest) {
     const body: CreateTransactionRequest = await request.json();
 
     if (!PAYEVO_SECRET_KEY) {
+      console.error('❌ PAYEVO_SECRET_KEY não configurado');
       return NextResponse.json(
-        { error: "PAYEVO_SECRET_KEY não configurado" },
+        { 
+          error: "PAYEVO_SECRET_KEY não configurado",
+          message: "Configure PAYEVO_SECRET_KEY nas variáveis de ambiente do Vercel"
+        },
         { status: 500 }
       );
     }
@@ -129,10 +133,26 @@ export async function POST(request: NextRequest) {
   } catch (error: any) {
     console.error("❌ Erro ao criar transação Payevo:", error);
     console.error("Stack:", error.stack);
+    console.error("Error name:", error.name);
+    console.error("Error message:", error.message);
+    
+    // Verificar se é erro de rede
+    if (error.message?.includes('fetch') || error.message?.includes('network')) {
+      return NextResponse.json(
+        { 
+          error: "Erro de conexão com a API Payevo",
+          message: "Não foi possível conectar à API. Verifique a URL e sua conexão.",
+          details: error.message
+        },
+        { status: 500 }
+      );
+    }
+    
     return NextResponse.json(
       { 
         error: "Erro interno ao criar transação",
         message: error.message || "Erro desconhecido",
+        type: error.name || 'Error',
         details: process.env.NODE_ENV === 'development' ? error.stack : undefined
       },
       { status: 500 }
