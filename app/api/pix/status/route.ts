@@ -67,6 +67,10 @@ export async function GET(request: NextRequest) {
             );
           }
         } else {
+          // Log detalhado do erro
+          console.error(`❌ Endpoint ${apiEndpoint} retornou status ${response.status}`);
+          console.error("Resposta completa:", responseText);
+          
           // Se não foi bem-sucedida, tentar próximo endpoint
           // Mas se for erro 401 (não autorizado) ou 403 (proibido), provavelmente é problema de token
           if (response.status === 401 || response.status === 403) {
@@ -80,6 +84,7 @@ export async function GET(request: NextRequest) {
                   error: "Erro de autenticação com PushinPay",
                   message: errorData.message || "Token inválido ou não autorizado",
                   details: errorData,
+                  endpoint: apiEndpoint,
                   status: response.status
                 },
                 { status: response.status }
@@ -89,7 +94,8 @@ export async function GET(request: NextRequest) {
                 {
                   error: "Erro de autenticação com PushinPay",
                   message: "Verifique se o token está correto nas variáveis de ambiente do Vercel",
-                  details: responseText.substring(0, 200),
+                  details: responseText.substring(0, 500),
+                  endpoint: apiEndpoint,
                   status: response.status
                 },
                 { status: response.status }
@@ -97,13 +103,36 @@ export async function GET(request: NextRequest) {
             }
           }
           
+          // Se for erro 404, o endpoint pode não existir
+          if (response.status === 404) {
+            console.log(`Endpoint ${apiEndpoint} não encontrado (404), tentando próximo...`);
+            try {
+              const errorData = JSON.parse(responseText);
+              lastError = {
+                endpoint: apiEndpoint,
+                status: response.status,
+                error: errorData.message || "Endpoint não encontrado",
+                details: errorData
+              };
+            } catch {
+              lastError = {
+                endpoint: apiEndpoint,
+                status: response.status,
+                error: "Endpoint não encontrado",
+                details: responseText.substring(0, 200)
+              };
+            }
+            continue;
+          }
+          
           try {
             const errorData = JSON.parse(responseText);
             lastError = {
               endpoint: apiEndpoint,
               status: response.status,
-              error: errorData.message || "Erro ao consultar PIX",
-              details: errorData
+              error: errorData.message || errorData.error || "Erro ao consultar PIX",
+              details: errorData,
+              responseText: responseText.substring(0, 500)
             };
             console.log(`Endpoint ${apiEndpoint} falhou com status ${response.status}, tentando próximo...`);
             continue;
@@ -112,7 +141,8 @@ export async function GET(request: NextRequest) {
               endpoint: apiEndpoint,
               status: response.status,
               error: "Erro ao consultar PIX",
-              details: responseText.substring(0, 200)
+              details: responseText.substring(0, 500),
+              responseText: responseText.substring(0, 500)
             };
             continue;
           }
