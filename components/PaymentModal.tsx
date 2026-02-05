@@ -92,11 +92,22 @@ export default function PaymentModal({ isOpen, onClose, model, price = 1.00 }: P
 
         // Payevo: pagamento confirmado quando paidAt não for null ou status for pago
         const paidAt = data.paidAt;
-        const isPagamentoConfirmado = (paidAt !== null && paidAt !== undefined) ||
-                                     status === 'paid' || 
-                                     status === 'approved' || 
-                                     status === 'completed' || 
-                                     status === 'confirmed';
+        const statusLower = status?.toLowerCase() || '';
+        
+        // Log detalhado para debug
+        console.log('🔍 Verificando pagamento:', {
+          status: status,
+          statusLower: statusLower,
+          paidAt: paidAt,
+          data: JSON.stringify(data, null, 2)
+        });
+        
+        const isPagamentoConfirmado = (paidAt !== null && paidAt !== undefined && paidAt !== '') ||
+                                     statusLower === 'paid' || 
+                                     statusLower === 'approved' || 
+                                     statusLower === 'completed' || 
+                                     statusLower === 'confirmed' ||
+                                     statusLower === 'paid_out';
 
         if (isPagamentoConfirmado) {
           console.log('✅✅✅ PAGAMENTO CONFIRMADO! Liberando conteúdo...');

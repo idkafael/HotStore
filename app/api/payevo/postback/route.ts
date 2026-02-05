@@ -29,11 +29,13 @@ export async function POST(request: NextRequest) {
 
     // Verificar se o pagamento foi confirmado
     // Conforme documentação: quando paidAt não for null e/ou status mudar para pago
-    const isPagamentoConfirmado = (paidAt !== null && paidAt !== undefined) || 
-                                   status === 'paid' || 
-                                   status === 'approved' || 
-                                   status === 'completed' || 
-                                   status === 'confirmed';
+    const statusLower = status?.toLowerCase() || '';
+    const isPagamentoConfirmado = (paidAt !== null && paidAt !== undefined && paidAt !== '') || 
+                                   statusLower === 'paid' || 
+                                   statusLower === 'approved' || 
+                                   statusLower === 'completed' || 
+                                   statusLower === 'confirmed' ||
+                                   statusLower === 'paid_out';
 
     if (isPagamentoConfirmado) {
       console.log('✅✅✅ PAGAMENTO CONFIRMADO VIA POSTBACK!');

@@ -81,21 +81,30 @@ export async function GET(request: NextRequest) {
       }, { status: 500 });
     }
 
-    console.log(`✅ Status consultado: ${transactionData.status}`);
-
     // Extrair dados da resposta (pode vir em data ou na raiz)
     const transaction = transactionData.data || transactionData;
+    
+    console.log(`✅ Status consultado: ${transaction.status || transactionData.status}`);
+    console.log(`📊 Dados completos da transação:`, JSON.stringify(transaction, null, 2));
+    console.log(`💰 PaidAt: ${transaction.paidAt || transactionData.paidAt || 'null'}`);
     
     // Adaptar resposta para formato compatível com frontend
     const adaptedResponse: TransactionStatusResponse = {
       id: transaction.id || transactionData.id || transactionId,
-      status: transaction.status || 'waiting_payment',
-      amount: transaction.amount || 0,
-      paymentMethod: transaction.paymentMethod || 'PIX',
+      status: transaction.status || transactionData.status || 'waiting_payment',
+      amount: transaction.amount || transactionData.amount || 0,
+      paymentMethod: transaction.paymentMethod || transactionData.paymentMethod || 'PIX',
       pix: transaction.pix || transactionData.pix,
-      paidAt: transaction.paidAt || transactionData.paidAt,
+      paidAt: transaction.paidAt || transactionData.paidAt || null,
       ...transaction
     };
+    
+    console.log(`📋 Resposta adaptada:`, {
+      id: adaptedResponse.id,
+      status: adaptedResponse.status,
+      paidAt: adaptedResponse.paidAt,
+      hasPix: !!adaptedResponse.pix
+    });
 
     return NextResponse.json(adaptedResponse);
 
