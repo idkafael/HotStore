@@ -1,0 +1,168 @@
+import { NextRequest, NextResponse } from "next/server";
+import { CreatePixRequest, CreatePixResponse } from "@/types/pix";
+
+// A URL base da PushinPay
+// Baseado na documentação: https://app.theneo.io/pushinpay/pix/pix/criar-pix
+const PUSHINPAY_API_BASE = process.env.PUSHINPAY_API_URL || "https://api.pushinpay.com.br";
+const PUSHINPAY_TOKEN = process.env.PUSHINPAY_TOKEN || "";
+
+export async function POST(request: NextRequest) {
+  try {
+    const body: CreatePixRequest = await request.json();
+
+    // Validações
+    if (!body.value || body.value < 50) {
+      return NextResponse.json(
+        { error: "O valor mínimo é de 50 centavos" },
+        { status: 400 }
+      );
+    }
+
+    if (!PUSHINPAY_TOKEN) {
+      return NextResponse.json(
+        { error: "Token PushinPay não configurado" },
+        { status: 500 }
+      );
+    }
+
+    // Aplicar split nativo se configurado
+    const splitAccountId = process.env.PUSHINPAY_SPLIT_ACCOUNT_ID;
+    if (splitAccountId && (!body.split_rules || body.split_rules.length === 0)) {
+      const splitPercentage = parseFloat(process.env.PUSHINPAY_SPLIT_PERCENTAGE || "10");
+      const splitValue = Math.floor(body.value * (splitPercentage / 100));
+      const maxSplit = Math.floor(body.value * 0.5);
+      
+      if (splitValue > 0 && splitValue <= maxSplit) {
+        body.split_rules = [{
+          value: splitValue,
+          account_id: splitAccountId,
+        }];
+      }
+    }
+
+    // Validar split rules se existirem
+    if (body.split_rules && body.split_rules.length > 0) {
+      const totalSplit = body.split_rules.reduce((sum, rule) => sum + rule.value, 0);
+      const maxSplit = Math.floor(body.value * 0.5);
+
+      if (totalSplit > maxSplit) {
+        return NextResponse.json(
+          { error: `O valor total dos splits (${totalSplit} centavos) não pode exceder 50% do valor da transação (${maxSplit} centavos)` },
+          { status: 400 }
+        );
+      }
+
+      if (totalSplit > body.value) {
+        return NextResponse.json(
+          { error: "O valor total dos splits não pode exceder o valor da transação" },
+          { status: 400 }
+        );
+      }
+    }
+
+    // Criar webhook URL se não fornecida
+    const webhookUrl = body.webhook_url || 
+      (process.env.NEXT_PUBLIC_APP_URL 
+        ? `${process.env.NEXT_PUBLIC_APP_URL}/api/pix/webhook` 
+        : undefined);
+
+    // Preparar payload para PushinPay conforme documentação
+    const payload: any = {
+      value: body.value,
+    };
+
+    if (webhookUrl) {
+      payload.webhook_url = webhookUrl;
+    }
+
+    if (body.split_rules && body.split_rules.length > 0) {
+      payload.split_rules = body.split_rules;
+    }
+
+    // Endpoint correto baseado no projeto funcional
+    // O endpoint correto é /api/pix/cashIn (não /pix/criar-pix)
+    const apiEndpoint = `${PUSHINPAY_API_BASE}/api/pix/cashIn`;
+    
+    console.log("=== DEBUG PIX CREATE ===");
+    console.log("URL Base:", PUSHINPAY_API_BASE);
+    console.log("Endpoint completo:", apiEndpoint);
+    console.log("Token presente:", PUSHINPAY_TOKEN ? "Sim" : "Não");
+    console.log("Payload:", JSON.stringify(payload, null, 2));
+    
+    try {
+      const response = await fetch(apiEndpoint, {
+        method: "POST",
+        headers: {
+          "Authorization": `Bearer ${PUSHINPAY_TOKEN}`,
+          "Accept": "application/json",
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(payload),
+      });
+
+      const responseText = await response.text();
+      console.log("Status da resposta:", response.status);
+      console.log("Resposta (primeiros 500 chars):", responseText.substring(0, 500));
+
+      // Se a resposta foi bem-sucedida
+      if (response.ok) {
+        try {
+          const data = JSON.parse(responseText);
+          console.log("✅ PIX criado com sucesso! ID:", data.id);
+          return NextResponse.json(data as CreatePixResponse);
+        } catch (parseError) {
+          console.error("Erro ao fazer parse da resposta:", parseError);
+          return NextResponse.json(
+            { 
+              error: "Erro ao processar resposta da API", 
+              details: `Resposta não é JSON válido. Status: ${response.status}. Resposta: ${responseText.substring(0, 200)}`,
+              status: response.status
+            },
+            { status: 500 }
+          );
+        }
+      }
+
+      // Se não foi bem-sucedida, tratar erro
+      try {
+        const errorData = JSON.parse(responseText);
+        console.error("Erro da PushinPay:", errorData);
+        return NextResponse.json(
+          { 
+            error: errorData.message || errorData.error || "Erro ao criar PIX", 
+            details: errorData,
+            status: response.status
+          },
+          { status: response.status }
+        );
+      } catch {
+        return NextResponse.json(
+          { 
+            error: "Erro ao criar PIX", 
+            details: `Status: ${response.status}. Resposta: ${responseText.substring(0, 200)}`,
+            status: response.status
+          },
+          { status: response.status }
+        );
+      }
+
+    } catch (fetchError: any) {
+      console.error("Erro na requisição fetch:", fetchError);
+      return NextResponse.json(
+        { 
+          error: "Erro ao conectar com a API PushinPay", 
+          details: fetchError.message,
+          endpoint: apiEndpoint
+        },
+        { status: 500 }
+      );
+    }
+
+  } catch (error: any) {
+    console.error("Erro ao criar PIX:", error);
+    return NextResponse.json(
+      { error: "Erro interno ao criar PIX", details: error.message },
+      { status: 500 }
+    );
+  }
+}
