@@ -40,7 +40,7 @@ export async function getAuthToken(): Promise<string> {
 
     if (!response.ok) {
       const errorText = await response.text().catch(() => '');
-      let errorData = {};
+      let errorData: { message?: string } = {};
       try {
         errorData = JSON.parse(errorText);
       } catch (e) {
