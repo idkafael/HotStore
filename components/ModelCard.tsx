@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import ImageCarousel from "./ImageCarousel";
 import TagBadge from "./TagBadge";
 import PaymentModal from "./PaymentModal";
@@ -14,6 +14,35 @@ export default function ModelCard({ model }: ModelCardProps) {
   const [isFavorite, setIsFavorite] = useState(false);
   const [isAdded, setIsAdded] = useState(false);
   const [isPaymentModalOpen, setIsPaymentModalOpen] = useState(false);
+  const [isPurchased, setIsPurchased] = useState(false);
+
+  // Verificar se o produto foi comprado
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const purchasedProducts = JSON.parse(localStorage.getItem('purchasedProducts') || '[]');
+      setIsPurchased(purchasedProducts.includes(model.id));
+      
+      // Ouvir mudanças no localStorage (quando outro componente atualizar)
+      const handleStorageChange = () => {
+        const updated = JSON.parse(localStorage.getItem('purchasedProducts') || '[]');
+        setIsPurchased(updated.includes(model.id));
+      };
+      
+      window.addEventListener('storage', handleStorageChange);
+      // Também verificar quando o componente monta/atualiza
+      const interval = setInterval(() => {
+        const updated = JSON.parse(localStorage.getItem('purchasedProducts') || '[]');
+        if (updated.includes(model.id) !== isPurchased) {
+          setIsPurchased(updated.includes(model.id));
+        }
+      }, 1000);
+      
+      return () => {
+        window.removeEventListener('storage', handleStorageChange);
+        clearInterval(interval);
+      };
+    }
+  }, [model.id, isPurchased]);
 
   return (
     <div className="bg-dark-card border border-dark-border rounded-lg overflow-hidden hover:border-purple-primary/50 transition-colors">
@@ -124,12 +153,25 @@ export default function ModelCard({ model }: ModelCardProps) {
           )}
         </div>
 
-        <button
-          onClick={() => setIsPaymentModalOpen(true)}
-          className="w-full bg-purple-primary hover:bg-purple-secondary text-white font-medium py-2 px-4 rounded transition-colors"
-        >
-          Eu Quero
-        </button>
+        {isPurchased ? (
+          <button
+            onClick={() => {
+              if (model.entregavel) {
+                window.open(model.entregavel, "_blank");
+              }
+            }}
+            className="w-full bg-green-500 hover:bg-green-600 text-white font-medium py-2 px-4 rounded transition-colors"
+          >
+            Acessar Produto
+          </button>
+        ) : (
+          <button
+            onClick={() => setIsPaymentModalOpen(true)}
+            className="w-full bg-purple-primary hover:bg-purple-secondary text-white font-medium py-2 px-4 rounded transition-colors"
+          >
+            Eu Quero
+          </button>
+        )}
       </div>
 
       <PaymentModal

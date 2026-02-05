@@ -90,19 +90,22 @@ export default function PaymentModal({ isOpen, onClose, model, price = 1.00 }: P
           console.log('✅✅✅ PAGAMENTO CONFIRMADO! Liberando conteúdo...');
           setPixStatus("paid");
           
-          // Pagamento confirmado - liberar acesso automaticamente
+          // Salvar no localStorage que este produto foi comprado
+          if (typeof window !== 'undefined') {
+            const purchasedProducts = JSON.parse(localStorage.getItem('purchasedProducts') || '[]');
+            if (!purchasedProducts.includes(model.id)) {
+              purchasedProducts.push(model.id);
+              localStorage.setItem('purchasedProducts', JSON.stringify(purchasedProducts));
+            }
+          }
+          
+          // Fechar modal imediatamente (sem temporizador)
+          onClose();
+          
+          // Abrir entregável imediatamente se existir
           if (model.entregavel) {
-            setTimeout(() => {
-              console.log(`🔗 Abrindo entregável: ${model.entregavel}`);
-              window.open(model.entregavel, "_blank");
-              setTimeout(() => {
-                onClose();
-              }, 3000);
-            }, 2000);
-          } else {
-            setTimeout(() => {
-              onClose();
-            }, 3000);
+            console.log(`🔗 Abrindo entregável: ${model.entregavel}`);
+            window.open(model.entregavel, "_blank");
           }
         } else if (status === 'pending' || status === 'processing' || status === 'created') {
           console.log('⏳ Aguardando pagamento... Status:', status);
