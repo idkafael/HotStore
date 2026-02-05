@@ -156,10 +156,24 @@ export async function POST(request: NextRequest) {
         }, { status: response.status });
       }
 
+      // Validar se o PIX foi criado corretamente
+      if (!pixData.id) {
+        console.error('❌ PIX criado mas sem ID na resposta:', pixData);
+        return NextResponse.json({
+          error: 'PIX criado mas resposta inválida',
+          message: 'A PushinPay retornou sucesso mas sem ID da transação',
+          details: pixData
+        }, { status: 500 });
+      }
+      
       // Registrar PIX no armazenamento local com status inicial
       updatePixStatus(pixData.id, pixData.status || "created");
       
-      console.log('✅ Transação criada com sucesso via PushinPay:', pixData);
+      console.log('✅ Transação criada com sucesso via PushinPay:');
+      console.log('   ID:', pixData.id);
+      console.log('   Status:', pixData.status);
+      console.log('   Valor:', pixData.value);
+      console.log('   QR Code presente:', !!pixData.qr_code);
       
       return NextResponse.json(pixData as CreatePixResponse);
     } catch (error: any) {

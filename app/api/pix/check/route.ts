@@ -43,6 +43,19 @@ export async function GET(request: NextRequest) {
       
       console.log(`🔍 Consultando status do PIX na PushinPay (documentação oficial): ${url}`);
 
+      // Validar token antes de fazer requisição
+      if (!PUSHINPAY_TOKEN || PUSHINPAY_TOKEN.length < 10) {
+        console.error('❌ Token PushinPay inválido ou muito curto');
+        return NextResponse.json({
+          error: 'Token PushinPay inválido',
+          message: 'O token configurado parece estar incorreto',
+          tokenLength: PUSHINPAY_TOKEN?.length || 0
+        }, { status: 500 });
+      }
+      
+      console.log(`🔑 Token presente: Sim (${PUSHINPAY_TOKEN.substring(0, 20)}...)`);
+      console.log(`🔗 URL completa: ${url}`);
+      
       // Fazer requisição direta à API conforme documentação oficial
       const response = await fetch(url, {
         method: 'GET',
@@ -54,40 +67,43 @@ export async function GET(request: NextRequest) {
       });
 
       console.log('📥 Status da resposta HTTP:', response.status, response.statusText);
+      
+      // Ler resposta para debug
+      const responseText = await response.text().catch(() => '');
+      console.log('📄 Resposta da PushinPay (primeiros 500 chars):', responseText.substring(0, 500));
 
       if (response.status === 404) {
-        console.log('⚠️ Transação não encontrada na PushinPay (404) - retornando array vazio conforme documentação');
-        // Conforme documentação: 404 retorna array vazio []
-        return NextResponse.json([], { status: 404 });
+        console.log('⚠️ Transação não encontrada na PushinPay (404)');
+        console.log('🔍 Possíveis causas:');
+        console.log('  1. Token inválido ou expirado');
+        console.log('  2. TransactionId incorreto:', transactionId);
+        console.log('  3. Transação ainda não foi criada na PushinPay');
+        console.log('  4. Endpoint incorreto (verificar documentação)');
+        
+        // Retornar erro mais descritivo em vez de array vazio
+        return NextResponse.json({
+          error: 'Transação não encontrada',
+          message: 'A transação não foi encontrada na PushinPay. Verifique se o token está correto e se a transação foi criada.',
+          transactionId: transactionId,
+          endpoint: url,
+          response: responseText.substring(0, 200)
+        }, { status: 404 });
       }
-
+      
+      // Tentar parsear JSON novamente já que já lemos o texto
       let statusData;
       try {
-        const contentType = response.headers.get('content-type') || '';
-        
-        if (!contentType.includes('application/json')) {
-          const text = await response.text();
-          console.error('❌ Resposta não é JSON. Content-Type:', contentType);
-          console.error('Resposta recebida:', text.substring(0, 500));
-          return NextResponse.json({
-            error: 'Resposta da API não é JSON',
-            message: 'A API PushinPay retornou uma resposta que não é JSON',
-            contentType: contentType,
-            responsePreview: text.substring(0, 500)
-          }, { status: 500 });
-        }
-        
-        statusData = await response.json();
+        statusData = JSON.parse(responseText);
       } catch (parseError) {
         console.error('❌ Erro ao parsear resposta JSON:', parseError);
-        const text = await response.text().catch(() => 'Não foi possível ler a resposta');
-        console.error('Resposta recebida (texto):', text.substring(0, 500));
         return NextResponse.json({
           error: 'Erro ao processar resposta da API PushinPay',
           message: 'A API retornou uma resposta inválida',
-          details: text.substring(0, 500)
+          details: responseText.substring(0, 500)
         }, { status: 500 });
       }
+
+      // statusData já foi parseado acima
       
       console.log('📥 Resposta completa da consulta PushinPay:', JSON.stringify(statusData, null, 2));
       console.log(`📊 Status retornado pela API: ${statusData.status}`);

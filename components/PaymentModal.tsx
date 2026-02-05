@@ -48,13 +48,25 @@ export default function PaymentModal({ isOpen, onClose, model, price = 1.00 }: P
         const response = await fetch(`/api/pix/check?transactionId=${pixData.id}`);
         
         if (!response.ok) {
+          const errorData = await response.json().catch(() => ({}));
+          
           if (response.status === 404) {
-            console.log(`⏳ Transação ainda não encontrada na API (aguardando criação)...`);
+            console.error('❌ Transação não encontrada (404):', {
+              transactionId: pixData.id,
+              error: errorData.error || errorData.message,
+              message: errorData.message,
+              endpoint: errorData.endpoint,
+              response: errorData.response
+            });
+            console.error('🔍 Possíveis causas:');
+            console.error('  1. Token PushinPay incorreto nas variáveis de ambiente');
+            console.error('  2. Transação não foi criada corretamente');
+            console.error('  3. ID da transação está incorreto');
           } else {
-            const errorData = await response.json().catch(() => ({}));
-            console.error('Erro ao verificar pagamento:', {
+            console.error('❌ Erro ao verificar pagamento:', {
               status: response.status,
-              error: errorData.error || errorData.message || 'Erro desconhecido'
+              error: errorData.error || errorData.message || 'Erro desconhecido',
+              details: errorData
             });
           }
           return;
