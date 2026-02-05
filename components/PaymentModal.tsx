@@ -40,12 +40,14 @@ export default function PaymentModal({ isOpen, onClose, model, price = 1.00 }: P
       return;
     }
 
+    // Polling menos frequente (10 segundos) já que o webhook é mais confiável
+    // O webhook será o método principal de detecção de pagamento
     const interval = setInterval(async () => {
       try {
         const response = await fetch(`/api/pix/status?id=${pixData.id}`);
         const data = await response.json();
         
-        if (response.ok) {
+        if (response.ok && data.status) {
           setPixStatus(data.status);
 
           if (data.status === "paid") {
@@ -66,16 +68,13 @@ export default function PaymentModal({ isOpen, onClose, model, price = 1.00 }: P
               }, 3000);
             }
           }
-        } else {
-          // Se houver erro, logar mas continuar tentando
-          console.error("Erro ao verificar status do PIX:", data.error || data.message);
-          // Não atualizar o status se houver erro, apenas logar
         }
+        // Se houver erro, não fazer nada - o webhook vai detectar o pagamento
+        // Não logar erros para não poluir o console
       } catch (error) {
-        console.error("Erro ao verificar status do PIX:", error);
-        // Continuar tentando mesmo em caso de erro de rede
+        // Silenciosamente ignorar erros de polling - webhook é mais confiável
       }
-    }, 3000); // Verificar a cada 3 segundos
+    }, 10000); // Verificar a cada 10 segundos (menos frequente)
 
     return () => clearInterval(interval);
   }, [pixData, pixStatus, model.entregavel, onClose]);
@@ -345,7 +344,8 @@ export default function PaymentModal({ isOpen, onClose, model, price = 1.00 }: P
 
                 <div className="bg-blue-500/20 border border-blue-500 rounded p-3 text-blue-300 text-sm text-center">
                   <p className="font-semibold">Aguardando pagamento...</p>
-                  <p className="text-xs mt-1">Verificando automaticamente a cada 3 segundos</p>
+                  <p className="text-xs mt-1">O pagamento será detectado automaticamente via webhook quando confirmado</p>
+                  <p className="text-xs mt-1 text-blue-400">Você pode fechar esta janela - será notificado quando o pagamento for confirmado</p>
                 </div>
 
                 {pixStatus === "expired" && (
