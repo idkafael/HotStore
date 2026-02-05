@@ -21,8 +21,8 @@ export async function GET() {
       postbackUrl: NEXT_PUBLIC_APP_URL ? `${NEXT_PUBLIC_APP_URL}/api/payevo/postback` : 'não configurado'
     },
     auth: {
-      basicAuthHeader: PAYEVO_SECRET_KEY ? `Basic ${Buffer.from(PAYEVO_SECRET_KEY).toString('base64')}` : 'não configurado',
-      basicAuthPreview: PAYEVO_SECRET_KEY ? `Basic ${Buffer.from(PAYEVO_SECRET_KEY).toString('base64').substring(0, 20)}...` : 'não configurado'
+      basicAuthHeader: PAYEVO_SECRET_KEY ? `Basic ${Buffer.from(`${PAYEVO_SECRET_KEY}:x`).toString('base64')}` : 'não configurado',
+      basicAuthPreview: PAYEVO_SECRET_KEY ? `Basic ${Buffer.from(`${PAYEVO_SECRET_KEY}:x`).toString('base64').substring(0, 20)}...` : 'não configurado'
     }
   });
 }

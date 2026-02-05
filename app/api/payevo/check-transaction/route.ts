@@ -25,7 +25,8 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    const authHeader = 'Basic ' + Buffer.from(PAYEVO_SECRET_KEY).toString('base64');
+    // Payevo requer SECRET_KEY:x no Basic Auth conforme documentação
+    const authHeader = 'Basic ' + Buffer.from(`${PAYEVO_SECRET_KEY}:x`).toString('base64');
     const url = `${PAYEVO_API_URL}/functions/v1/transactions/${transactionId}`;
 
     console.log(`🔍 Consultando transação Payevo diretamente: ${url}`);

@@ -82,7 +82,8 @@ export async function POST(request: NextRequest) {
 
     // Basic Authentication conforme documentação Payevo
     // A documentação indica usar Basic Auth com a SECRET_KEY
-    const authHeader = 'Basic ' + Buffer.from(PAYEVO_SECRET_KEY).toString('base64');
+    // Payevo requer SECRET_KEY:x no Basic Auth conforme documentação
+    const authHeader = 'Basic ' + Buffer.from(`${PAYEVO_SECRET_KEY}:x`).toString('base64');
 
     const url = `${PAYEVO_API_URL}/functions/v1/transactions`;
     
