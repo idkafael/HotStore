@@ -163,7 +163,17 @@ export async function POST(request: NextRequest) {
       amount: transaction.amount || body.amount,
       paymentMethod: transaction.paymentMethod || 'PIX',
       pix: transaction.pix || transactionData.pix,
-      // Compatibilidade com frontend (extrair qrcode do objeto pix)
+      // Payevo retorna:
+      // - pix.qrcode: link da imagem do QR code (pode ser URL da imagem ou código PIX)
+      // - pixCode ou pix_code: código PIX copiável (EMV) - string longa começando com "000201"
+      pixCode: transaction.pixCode || 
+               transactionData.pixCode || 
+               transaction.pix_code || 
+               transactionData.pix_code ||
+               transaction.pix?.qrcode || // Se qrcode for o código PIX, usar também
+               transactionData.pix?.qrcode ||
+               '',
+      // Compatibilidade com frontend
       qr_code: transaction.pix?.qrcode || transactionData.pix?.qrcode || '',
       qr_code_base64: '', // Payevo retorna link, não base64
       ...transaction

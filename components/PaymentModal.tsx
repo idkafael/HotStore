@@ -199,10 +199,10 @@ export default function PaymentModal({ isOpen, onClose, model, price = 1.00 }: P
   };
 
   const copyPixCode = () => {
-    // Payevo retorna qrcode em pix.qrcode ou qr_code
-    const qrCode = pixData?.pix?.qrcode || pixData?.qr_code;
-    if (qrCode) {
-      navigator.clipboard.writeText(qrCode);
+    // Payevo: pixCode é o código PIX copiável (EMV), pix.qrcode é link da imagem
+    const pixCode = pixData?.pixCode || pixData?.qr_code || pixData?.pix?.qrcode;
+    if (pixCode) {
+      navigator.clipboard.writeText(pixCode);
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
     }
@@ -389,29 +389,45 @@ export default function PaymentModal({ isOpen, onClose, model, price = 1.00 }: P
                   )}
                 </div>
 
-                {/* Payevo retorna qrcode como link - usar img nativo para melhor compatibilidade */}
-                {(pixData.pix?.qrcode || pixData.qr_code) && (
-                  <div className="flex justify-center bg-white p-4 rounded-lg">
-                    <img
-                      src={pixData.pix?.qrcode || pixData.qr_code || ''}
-                      alt="QR Code PIX"
-                      className="w-64 h-64 object-contain"
-                      onError={(e) => {
-                        console.error('Erro ao carregar QR code:', pixData.pix?.qrcode || pixData.qr_code);
-                        // Tentar gerar QR code a partir do código PIX se o link falhar
-                        const qrCodeUrl = `https://api.qrserver.com/v1/create-qr-code/?size=256x256&data=${encodeURIComponent(pixData.qr_code || '')}`;
-                        (e.target as HTMLImageElement).src = qrCodeUrl;
-                      }}
-                    />
-                  </div>
-                )}
+                {/* Payevo: pix.qrcode pode ser link da imagem OU código PIX copiável */}
+                {/* Gerar QR code a partir do código PIX copiável */}
+                {(() => {
+                  // Priorizar pixCode, senão usar qr_code ou pix.qrcode
+                  const pixCode = pixData.pixCode || pixData.qr_code || pixData.pix?.qrcode || '';
+                  
+                  // Verificar se é um link de imagem (começa com http) ou código PIX (começa com 000201)
+                  const isImageUrl = pixCode.startsWith('http://') || pixCode.startsWith('https://');
+                  
+                  // Se for link de imagem, usar diretamente. Senão, gerar QR code a partir do código PIX
+                  const qrCodeUrl = isImageUrl 
+                    ? pixCode 
+                    : (pixCode ? `https://api.qrserver.com/v1/create-qr-code/?size=256x256&data=${encodeURIComponent(pixCode)}` : '');
+                  
+                  return qrCodeUrl ? (
+                    <div className="flex justify-center bg-white p-4 rounded-lg">
+                      <img
+                        src={qrCodeUrl}
+                        alt="QR Code PIX"
+                        className="w-64 h-64 object-contain"
+                        onError={(e) => {
+                          console.error('Erro ao carregar QR code:', qrCodeUrl);
+                          // Se falhar e for link de imagem, tentar gerar a partir do código PIX
+                          if (isImageUrl && pixCode && !pixCode.startsWith('http')) {
+                            const fallbackUrl = `https://api.qrserver.com/v1/create-qr-code/?size=256x256&data=${encodeURIComponent(pixCode)}`;
+                            (e.target as HTMLImageElement).src = fallbackUrl;
+                          }
+                        }}
+                      />
+                    </div>
+                  ) : null;
+                })()}
 
                 <div className="space-y-2">
                   <label className="block text-white text-sm font-medium">Código PIX (Copiar e Colar)</label>
                   <div className="flex gap-2">
                     <input
                       type="text"
-                      value={pixData.pix?.qrcode || pixData.qr_code || ''}
+                      value={pixData.pixCode || pixData.qr_code || pixData.pix?.qrcode || ''}
                       readOnly
                       className="flex-1 bg-black border border-dark-border rounded px-4 py-2 text-white text-xs font-mono break-all"
                     />
