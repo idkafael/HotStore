@@ -169,6 +169,10 @@ export default function PaymentModal({ isOpen, onClose, model, price = 1.00 }: P
             modelName: model.name,
             orderId: `order-${Date.now()}`
           }),
+          customer: {
+            name: "Cliente",
+            email: "cliente@email.com"
+          },
           items: [{
             title: model.name,
             unitPrice: valueInCents,

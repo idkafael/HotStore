@@ -56,9 +56,15 @@ export async function POST(request: NextRequest) {
       payload.metadata = typeof body.metadata === 'string' ? body.metadata : JSON.stringify(body.metadata);
     }
 
-    // Adicionar customer se fornecido
+    // Adicionar customer se fornecido, senão criar um padrão
     if (body.customer) {
       payload.customer = body.customer;
+    } else {
+      // Payevo requer dados do cliente - criar um padrão
+      payload.customer = {
+        name: "Cliente",
+        email: "cliente@email.com"
+      };
     }
 
     // Adicionar items se fornecido
