@@ -2,6 +2,9 @@ import { NextRequest, NextResponse } from "next/server";
 import { PixWebhookPayload } from "@/types/pix";
 import { updatePixStatus } from "@/lib/pixStatusStore";
 
+// Forçar renderização dinâmica (não estática)
+export const dynamic = 'force-dynamic';
+
 // Webhook para receber notificações da PushinPay
 // Baseado no projeto de referência que funciona: privtela2-master
 // Este endpoint é chamado automaticamente pela PushinPay quando o status do pagamento muda
@@ -39,7 +42,7 @@ export async function POST(request: NextRequest) {
 
     const transactionId = payload.id;
     const status = payload.status?.toLowerCase() || 'unknown';
-    const value = payload.value || payload.amount;
+    const value = payload.value;
 
     console.log(`📊 Webhook - Transação ${transactionId}: Status = ${status}, Valor = ${value}`);
 

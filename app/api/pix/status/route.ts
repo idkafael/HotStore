@@ -1,6 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { PixStatusResponse } from "@/types/pix";
 
+// Forçar renderização dinâmica (não estática)
+export const dynamic = 'force-dynamic';
+
 const PUSHINPAY_API_URL = process.env.PUSHINPAY_API_URL || "https://api.pushinpay.com.br";
 const PUSHINPAY_TOKEN = process.env.PUSHINPAY_TOKEN || "";
 

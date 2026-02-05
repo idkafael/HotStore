@@ -2,6 +2,9 @@ import { NextRequest, NextResponse } from "next/server";
 import { CreatePixRequest, CreatePixResponse } from "@/types/pix";
 import { updatePixStatus } from "@/lib/pixStatusStore";
 
+// Forçar renderização dinâmica (não estática)
+export const dynamic = 'force-dynamic';
+
 // API Route para PushinPay - Protegida no servidor
 // Baseado no projeto de referência que funciona: privtela2-master
 // Documentação: https://app.theneo.io/pushinpay/pix

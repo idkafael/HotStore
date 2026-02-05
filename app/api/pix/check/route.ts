@@ -2,6 +2,9 @@ import { NextRequest, NextResponse } from "next/server";
 import { PixStatusResponse } from "@/types/pix";
 import { updatePixStatus } from "@/lib/pixStatusStore";
 
+// Forçar renderização dinâmica (não estática)
+export const dynamic = 'force-dynamic';
+
 // API Route para verificar status de pagamento PushinPay
 // Baseado no projeto de referência que funciona: privtela2-master
 // Endpoint: GET /api/pix/check?transactionId={id}
