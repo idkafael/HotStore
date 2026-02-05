@@ -27,14 +27,12 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    // Tentar diferentes endpoints possíveis conforme documentação PushinPay
-    // Nota: Algumas APIs usam o mesmo endpoint de criação com GET para consultar
+    // Endpoint correto conforme documentação: https://app.theneo.io/pushinpay/pix/pix/consultar-pix
+    // GET /api/pix/{id}
     const endpoints = [
-      `${PUSHINPAY_API_URL}/api/pix/cashIn/${pixId}`, // Mesmo endpoint de criação, mas com GET
-      `${PUSHINPAY_API_URL}/api/pix/status/${pixId}`,
-      `${PUSHINPAY_API_URL}/pix/status/${pixId}`,
-      `${PUSHINPAY_API_URL}/api/pix/${pixId}`,
-      `${PUSHINPAY_API_URL}/pix/${pixId}`,
+      `${PUSHINPAY_API_URL}/api/pix/${pixId}`, // Endpoint principal conforme documentação
+      `${PUSHINPAY_API_URL}/api/pix/cashIn/${pixId}`, // Fallback: mesmo endpoint de criação com GET
+      `${PUSHINPAY_API_URL}/pix/${pixId}`, // Fallback alternativo
     ];
     
     let lastError: any = null;
@@ -104,22 +102,44 @@ export async function GET(request: NextRequest) {
             }
           }
           
-          // Se for erro 404, o endpoint pode não existir
+          // Se for erro 404, conforme documentação retorna array vazio []
           if (response.status === 404) {
-            console.log(`Endpoint ${apiEndpoint} não encontrado (404), tentando próximo...`);
+            console.log(`PIX ${pixId} não encontrado (404) - retornando array vazio conforme documentação`);
             try {
               const errorData = JSON.parse(responseText);
+              // Se for array vazio, PIX não existe
+              if (Array.isArray(errorData) && errorData.length === 0) {
+                return NextResponse.json(
+                  { 
+                    error: "PIX não encontrado",
+                    message: "O PIX com este ID não foi encontrado na PushinPay",
+                    pixId: pixId
+                  },
+                  { status: 404 }
+                );
+              }
               lastError = {
                 endpoint: apiEndpoint,
                 status: response.status,
-                error: errorData.message || "Endpoint não encontrado",
+                error: errorData.message || "PIX não encontrado",
                 details: errorData
               };
             } catch {
+              // Se a resposta não for JSON, pode ser array vazio como string
+              if (responseText.trim() === "[]") {
+                return NextResponse.json(
+                  { 
+                    error: "PIX não encontrado",
+                    message: "O PIX com este ID não foi encontrado na PushinPay",
+                    pixId: pixId
+                  },
+                  { status: 404 }
+                );
+              }
               lastError = {
                 endpoint: apiEndpoint,
                 status: response.status,
-                error: "Endpoint não encontrado",
+                error: "PIX não encontrado",
                 details: responseText.substring(0, 200)
               };
             }

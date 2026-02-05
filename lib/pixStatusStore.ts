@@ -6,6 +6,7 @@ interface PixStatus {
   status: "created" | "paid" | "expired" | "canceled";
   updatedAt: Date;
   entregavel?: string; // Link do entregável para liberar quando pago
+  lastApiCheck?: Date; // Última vez que consultamos a API (para rate limiting)
 }
 
 const pixStatusStore = new Map<string, PixStatus>();
@@ -58,4 +59,25 @@ export function getPixStatusWithCleanup(pixId: string): PixStatus | null {
     cleanupOldStatuses();
   }
   return getPixStatus(pixId);
+}
+
+// Verificar se pode consultar API (rate limiting: 1 minuto entre consultas)
+export function canCheckApi(pixId: string): boolean {
+  const status = getPixStatus(pixId);
+  if (!status || !status.lastApiCheck) {
+    return true; // Nunca consultou, pode consultar
+  }
+  
+  const now = new Date();
+  const oneMinuteAgo = new Date(now.getTime() - 60 * 1000);
+  return status.lastApiCheck < oneMinuteAgo;
+}
+
+// Marcar que consultamos a API (para rate limiting)
+export function markApiCheck(pixId: string) {
+  const status = getPixStatus(pixId);
+  if (status) {
+    status.lastApiCheck = new Date();
+    pixStatusStore.set(pixId, status);
+  }
 }
