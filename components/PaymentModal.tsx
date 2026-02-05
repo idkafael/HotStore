@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { Model } from "@/types/model";
-import { CreatePixResponse } from "@/types/pix";
+import { CreateTransactionResponse } from "@/types/payevo";
 import Image from "next/image";
 
 interface PaymentModalProps {
@@ -15,7 +15,7 @@ interface PaymentModalProps {
 export default function PaymentModal({ isOpen, onClose, model, price = 1.00 }: PaymentModalProps) {
   const [paymentMethod, setPaymentMethod] = useState<string>("pix");
   const [isProcessing, setIsProcessing] = useState(false);
-  const [pixData, setPixData] = useState<CreatePixResponse | null>(null);
+  const [pixData, setPixData] = useState<CreateTransactionResponse | null>(null);
   const [pixStatus, setPixStatus] = useState<"created" | "paid" | "expired" | "canceled">("created");
   const [error, setError] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
@@ -72,10 +72,9 @@ export default function PaymentModal({ isOpen, onClose, model, price = 1.00 }: P
         }
 
         const data = await response.json();
-        console.log('📥 Resposta completa da API:', JSON.stringify(data, null, 2));
+        console.log('📥 Resposta completa da API Payevo:', JSON.stringify(data, null, 2));
         
-        // Conforme documentação oficial, o retorno é igual ao de criar PIX
-        // O status está diretamente no objeto raiz: { id, status, value, ... }
+        // Extrair status do Payevo
         let status = data.status?.toLowerCase();
         
         console.log('🔍 Debug - Extraindo status:', {
@@ -89,9 +88,9 @@ export default function PaymentModal({ isOpen, onClose, model, price = 1.00 }: P
           console.warn('⚠️ Status não encontrado ou desconhecido, usando "pending"');
         }
         
-        console.log('📊 Status do pagamento PushinPay:', status);
+        console.log('📊 Status do pagamento Payevo:', status);
 
-        const isPagamentoConfirmado = status === 'paid' || status === 'approved' || status === 'confirmed';
+        const isPagamentoConfirmado = status === 'paid' || status === 'approved' || status === 'completed' || status === 'confirmed';
 
         if (isPagamentoConfirmado) {
           console.log('✅✅✅ PAGAMENTO CONFIRMADO! Liberando conteúdo...');

@@ -5,6 +5,7 @@ export const dynamic = 'force-dynamic';
 
 // API Route para buscar status de transação Payevo
 // Documentação: https://payevov2.readme.io
+// Endpoint: GET https://apiv2.payevo.com.br/functions/v1/transactions/{id}
 
 const PAYEVO_API_URL = process.env.PAYEVO_API_URL || "https://apiv2.payevo.com.br";
 const PAYEVO_SECRET_KEY = process.env.PAYEVO_SECRET_KEY || "";
@@ -28,13 +29,69 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    // TODO: Implementar busca de transação conforme documentação Payevo
-    // Aguardando documentação completa
+    // Basic Authentication conforme documentação
+    const authHeader = 'Basic ' + Buffer.from(PAYEVO_SECRET_KEY).toString('base64');
 
-    return NextResponse.json({
-      error: "Aguardando implementação",
-      message: "Aguardando documentação completa do Payevo"
-    }, { status: 501 });
+    const url = `${PAYEVO_API_URL}/functions/v1/transactions/${transactionId}`;
+    
+    console.log(`🔍 Consultando transação Payevo: ${url}`);
+
+    const response = await fetch(url, {
+      method: 'GET',
+      headers: {
+        'Authorization': authHeader,
+        'Accept': 'application/json',
+        'Content-Type': 'application/json'
+      }
+    });
+
+    const responseText = await response.text();
+    console.log('📥 Status da resposta:', response.status);
+    console.log('📥 Resposta:', responseText.substring(0, 500));
+
+    if (response.status === 404) {
+      return NextResponse.json({
+        error: 'Transação não encontrada',
+        transactionId
+      }, { status: 404 });
+    }
+
+    if (!response.ok) {
+      try {
+        const errorData = JSON.parse(responseText);
+        return NextResponse.json({
+          error: errorData.message || errorData.error || 'Erro ao buscar transação',
+          details: errorData
+        }, { status: response.status });
+      } catch {
+        return NextResponse.json({
+          error: 'Erro ao buscar transação',
+          details: responseText.substring(0, 500)
+        }, { status: response.status });
+      }
+    }
+
+    let transactionData;
+    try {
+      transactionData = JSON.parse(responseText);
+    } catch (parseError) {
+      return NextResponse.json({
+        error: 'Erro ao processar resposta da API',
+        details: responseText.substring(0, 500)
+      }, { status: 500 });
+    }
+
+    console.log(`✅ Status consultado: ${transactionData.status}`);
+
+    // Adaptar resposta para formato compatível com frontend
+    const adaptedResponse: TransactionStatusResponse = {
+      id: transactionData.id || transactionData.transaction_id || transactionId,
+      status: transactionData.status || 'pending',
+      amount: transactionData.amount || 0,
+      ...transactionData
+    };
+
+    return NextResponse.json(adaptedResponse);
 
   } catch (error: any) {
     console.error("Erro ao buscar transação Payevo:", error);
