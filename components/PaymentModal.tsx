@@ -12,7 +12,7 @@ interface PaymentModalProps {
   price?: number;
 }
 
-export default function PaymentModal({ isOpen, onClose, model, price = 1.00 }: PaymentModalProps) {
+export default function PaymentModal({ isOpen, onClose, model, price = 49.90 }: PaymentModalProps) {
   const [paymentMethod, setPaymentMethod] = useState<string>("pix");
   const [isProcessing, setIsProcessing] = useState(false);
   const [pixData, setPixData] = useState<SyncPayPixResponse | null>(null);
