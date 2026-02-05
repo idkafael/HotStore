@@ -12,7 +12,7 @@ interface PaymentModalProps {
   price?: number; // Preço em reais (opcional, pode vir do modelo ou ser fixo)
 }
 
-export default function PaymentModal({ isOpen, onClose, model, price = 29.90 }: PaymentModalProps) {
+export default function PaymentModal({ isOpen, onClose, model, price = 1.00 }: PaymentModalProps) {
   const [paymentMethod, setPaymentMethod] = useState<string>("pix");
   const [isProcessing, setIsProcessing] = useState(false);
   const [pixData, setPixData] = useState<CreatePixResponse | null>(null);
@@ -48,20 +48,21 @@ export default function PaymentModal({ isOpen, onClose, model, price = 29.90 }: 
           setPixStatus(data.status);
 
           if (data.status === "paid") {
-            // Pagamento confirmado - liberar acesso
+            // Pagamento confirmado - liberar acesso automaticamente
             if (model.entregavel) {
+              // Abrir link automaticamente após 2 segundos
               setTimeout(() => {
-                const shouldOpen = window.confirm(
-                  "Pagamento confirmado! Deseja abrir o conteúdo entregável?"
-                );
-                if (shouldOpen) {
-                  window.open(model.entregavel, "_blank");
-                }
-                onClose();
-              }, 1000);
+                window.open(model.entregavel, "_blank");
+                // Fechar modal após 3 segundos
+                setTimeout(() => {
+                  onClose();
+                }, 3000);
+              }, 2000);
             } else {
-              alert("Pagamento confirmado com sucesso!");
-              onClose();
+              // Se não houver entregável, apenas fechar após mostrar sucesso
+              setTimeout(() => {
+                onClose();
+              }, 3000);
             }
           }
         }
@@ -271,7 +272,25 @@ export default function PaymentModal({ isOpen, onClose, model, price = 29.90 }: 
                       d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
                     />
                   </svg>
-                  <p className="text-green-400 font-bold text-lg">Pagamento Confirmado!</p>
+                  <p className="text-green-400 font-bold text-lg mb-2">Pagamento Confirmado!</p>
+                  {model.entregavel ? (
+                    <>
+                      <p className="text-gray-300 text-sm mb-4">
+                        O conteúdo será aberto automaticamente em alguns segundos...
+                      </p>
+                      <button
+                        onClick={() => {
+                          window.open(model.entregavel, "_blank");
+                          setTimeout(() => onClose(), 1000);
+                        }}
+                        className="w-full bg-green-500 hover:bg-green-600 text-white font-bold py-3 px-6 rounded-lg transition-colors"
+                      >
+                        Abrir Conteúdo Agora
+                      </button>
+                    </>
+                  ) : (
+                    <p className="text-gray-300 text-sm">Pagamento processado com sucesso!</p>
+                  )}
                 </div>
               </div>
             ) : (
