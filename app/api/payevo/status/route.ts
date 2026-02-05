@@ -87,11 +87,20 @@ export async function GET(request: NextRequest) {
     const finalStatus = transaction.status || transactionData.status || 'waiting_payment';
     const finalPaidAt = transaction.paidAt || transactionData.paidAt;
     const pixData = transaction.pix || transactionData.pix;
+    const updatedAt = transaction.updatedAt || transactionData.updatedAt;
     
     console.log(`✅ Status consultado: ${finalStatus}`);
     console.log(`💰 PaidAt: ${finalPaidAt || 'null'}`);
     console.log(`🔗 End2EndId: ${pixData?.end2EndId || pixData?.end_to_end_id || 'null'}`);
     console.log(`🧾 ReceiptUrl: ${pixData?.receiptUrl || pixData?.receipt_url || 'null'}`);
+    console.log(`🕐 UpdatedAt: ${updatedAt || 'null'}`);
+    console.log(`📊 Dados completos do PIX:`, JSON.stringify(pixData, null, 2));
+    
+    // Log adicional: verificar se há algum campo que indique pagamento
+    if (pixData) {
+      console.log(`🔍 Análise PIX - Todos os campos:`, Object.keys(pixData));
+      console.log(`🔍 Análise PIX - Valores:`, pixData);
+    }
     
     // Adaptar resposta para formato compatível com frontend
     const adaptedResponse: TransactionStatusResponse = {

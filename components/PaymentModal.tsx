@@ -123,6 +123,10 @@ export default function PaymentModal({ isOpen, onClose, model, price = 1.00 }: P
         
         // Payevo: quando pago, o status pode mudar para "paid" ou "approved"
         // E o paidAt será preenchido, ou pode ter end2EndId/receiptUrl
+        // IMPORTANTE: Verificar também se updatedAt mudou recentemente (pode indicar atualização)
+        const updatedAt = data.updatedAt;
+        const hasRecentUpdate = updatedAt && new Date(updatedAt) > new Date(Date.now() - 5 * 60 * 1000); // Últimos 5 minutos
+        
         const isPagamentoConfirmado = (paidAt !== null && paidAt !== undefined && paidAt !== '') ||
                                      statusLower === 'paid' || 
                                      statusLower === 'approved' || 
@@ -130,8 +134,31 @@ export default function PaymentModal({ isOpen, onClose, model, price = 1.00 }: P
                                      statusLower === 'confirmed' ||
                                      statusLower === 'paid_out' ||
                                      statusLower === 'success' ||
+                                     statusLower === 'pago' || // Status em português
                                      (hasEnd2EndId && statusLower !== 'waiting_payment') || // Se tem end2EndId e não está waiting, provavelmente foi pago
                                      (hasReceiptUrl && statusLower !== 'waiting_payment'); // Se tem receiptUrl, foi pago
+        
+        console.log('🔍 Análise completa de pagamento:', {
+          isPagamentoConfirmado,
+          paidAt,
+          statusLower,
+          hasEnd2EndId,
+          hasReceiptUrl,
+          updatedAt,
+          hasRecentUpdate,
+          allStatusChecks: {
+            paidAtCheck: paidAt !== null && paidAt !== undefined && paidAt !== '',
+            statusPaid: statusLower === 'paid',
+            statusApproved: statusLower === 'approved',
+            statusCompleted: statusLower === 'completed',
+            statusConfirmed: statusLower === 'confirmed',
+            statusPaidOut: statusLower === 'paid_out',
+            statusSuccess: statusLower === 'success',
+            statusPago: statusLower === 'pago',
+            end2EndIdCheck: hasEnd2EndId && statusLower !== 'waiting_payment',
+            receiptUrlCheck: hasReceiptUrl && statusLower !== 'waiting_payment'
+          }
+        });
 
         if (isPagamentoConfirmado) {
           console.log('✅✅✅ PAGAMENTO CONFIRMADO! Liberando conteúdo...');

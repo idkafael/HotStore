@@ -34,6 +34,8 @@ export async function POST(request: NextRequest) {
     const paidAt = transactionData.paidAt;
 
     console.log(`📊 Postback - Transação ${transactionId}: Status = ${status}, Valor = ${amount}, PaidAt = ${paidAt}`);
+    console.log(`📦 Dados completos do postback:`, JSON.stringify(transactionData, null, 2));
+    console.log(`🔍 Campos disponíveis:`, Object.keys(transactionData));
 
     // Verificar se o pagamento foi confirmado
     // Conforme documentação: quando paidAt não for null e/ou status mudar para pago
