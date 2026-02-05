@@ -1,5 +1,39 @@
 [
   {
+    "id": "juliethofl",
+    "name": "Juliethofl",
+    "images": [
+      "https://res.cloudinary.com/dpiwznjt5/image/upload/v1770315009/modelos/iqrsa146xq6onxrrmmd3.png",
+      "https://res.cloudinary.com/dpiwznjt5/image/upload/v1770315013/modelos/cr5nnqqyi1ahytdw7rtm.jpg",
+      "https://res.cloudinary.com/dpiwznjt5/image/upload/v1770315013/modelos/yuwnoubuobbwsvne8t4x.jpg"
+    ],
+    "tags": [
+      "Latina",
+      "Cavala",
+      "Morena",
+      "Preta",
+      "Tem Chamada de Vídeo"
+    ],
+    "entregavel": "https://mega.nz/folder/6lpygQwD#9ErXf-q73kOAzu8w2-SLeg",
+    "quantidadeFotos": 222,
+    "quantidadeVideos": 91
+  },
+  {
+    "id": "emrose",
+    "name": "Emrose",
+    "images": [
+      "https://res.cloudinary.com/dpiwznjt5/image/upload/v1770314642/modelos/xhcaqzcx9ysfklcwvblm.png",
+      "https://res.cloudinary.com/dpiwznjt5/image/upload/v1770314730/modelos/wqmknpuikd0hk6e35s1z.jpg",
+      "https://res.cloudinary.com/dpiwznjt5/image/upload/v1770314732/modelos/exufqfc2dpfukgwsablq.png"
+    ],
+    "tags": [
+      "Loira"
+    ],
+    "entregavel": "https://mega.nz/folder/CdtEQLAS#IcTeIgSC5nHQz9ghuD5ReQ",
+    "quantidadeFotos": 1060,
+    "quantidadeVideos": 152
+  },
+  {
     "id": "joymei",
     "name": "JoyMei",
     "images": [
