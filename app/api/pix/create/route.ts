@@ -61,11 +61,11 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // Criar webhook URL se não fornecida
-    const webhookUrl = body.webhook_url || 
-      (process.env.NEXT_PUBLIC_APP_URL 
-        ? `${process.env.NEXT_PUBLIC_APP_URL}/api/pix/webhook` 
-        : undefined);
+    // Criar webhook URL - sempre usar NEXT_PUBLIC_APP_URL se configurado (produção)
+    // Senão usar o webhook_url do body (desenvolvimento)
+    const webhookUrl = process.env.NEXT_PUBLIC_APP_URL 
+      ? `${process.env.NEXT_PUBLIC_APP_URL}/api/pix/webhook`
+      : (body.webhook_url || `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3001'}/api/pix/webhook`);
 
     // Preparar payload para PushinPay conforme documentação
     const payload: any = {
@@ -74,6 +74,10 @@ export async function POST(request: NextRequest) {
 
     if (webhookUrl) {
       payload.webhook_url = webhookUrl;
+      console.log("🔗 Webhook URL configurado:", webhookUrl);
+    } else {
+      console.warn("⚠️ Webhook URL não configurado! O PushinPay não poderá notificar sobre pagamentos.");
+      console.warn("Configure NEXT_PUBLIC_APP_URL ou envie webhook_url no body da requisição");
     }
 
     if (body.split_rules && body.split_rules.length > 0) {
@@ -95,6 +99,8 @@ export async function POST(request: NextRequest) {
     console.log("=== DEBUG PIX CREATE ===");
     console.log("URL Base:", PUSHINPAY_API_BASE);
     console.log("Token presente:", PUSHINPAY_TOKEN ? "Sim" : "Não");
+    console.log("Webhook URL:", webhookUrl || "NÃO CONFIGURADO");
+    console.log("NEXT_PUBLIC_APP_URL:", process.env.NEXT_PUBLIC_APP_URL || "NÃO CONFIGURADO");
     console.log("Payload:", JSON.stringify(payload, null, 2));
     
     for (const apiEndpoint of endpoints) {

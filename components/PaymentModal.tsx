@@ -95,6 +95,7 @@ export default function PaymentModal({ isOpen, onClose, model, price = 1.00 }: P
       const totalPrice = price + (includeLogoRemover ? logoRemoverPrice : 0);
       const valueInCents = Math.round(totalPrice * 100);
 
+      // O backend vai usar NEXT_PUBLIC_APP_URL se configurado, senão usa o webhook_url do body
       const response = await fetch("/api/pix/create", {
         method: "POST",
         headers: {
@@ -103,6 +104,7 @@ export default function PaymentModal({ isOpen, onClose, model, price = 1.00 }: P
         body: JSON.stringify({
           value: valueInCents,
           webhook_url: `${window.location.origin}/api/pix/webhook`,
+          // O backend prioriza NEXT_PUBLIC_APP_URL se configurado
           // Split será aplicado automaticamente no backend se configurado
         }),
       });
