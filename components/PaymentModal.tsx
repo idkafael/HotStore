@@ -40,12 +40,11 @@ export default function PaymentModal({ isOpen, onClose, model, price = 1.00 }: P
       return;
     }
 
-    // Polling conforme projeto de referência que funciona
-    // Verifica diretamente na API PushinPay a cada 3 segundos
+    // Polling Payevo - verificar status a cada 3 segundos
     const interval = setInterval(async () => {
       try {
-        console.log(`🔄 Verificando status do PIX ${pixData.id}...`);
-        const response = await fetch(`/api/pix/check?transactionId=${pixData.id}`);
+        console.log(`🔄 Verificando status da transação ${pixData.id}...`);
+        const response = await fetch(`/api/payevo/status?id=${pixData.id}`);
         
         if (!response.ok) {
           const errorData = await response.json().catch(() => ({}));
@@ -149,17 +148,17 @@ export default function PaymentModal({ isOpen, onClose, model, price = 1.00 }: P
       const totalPrice = price + (includeLogoRemover ? logoRemoverPrice : 0);
       const valueInCents = Math.round(totalPrice * 100);
 
-      // O backend vai usar NEXT_PUBLIC_APP_URL se configurado, senão usa o webhook_url do body
-      const response = await fetch("/api/pix/create", {
+      // Payevo - criar transação
+      const response = await fetch("/api/payevo/create", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          value: valueInCents,
-          webhook_url: `${window.location.origin}/api/pix/webhook`,
-          // O backend prioriza NEXT_PUBLIC_APP_URL se configurado
-          // Split será aplicado automaticamente no backend se configurado
+          amount: valueInCents,
+          description: `Pagamento - ${model.name}`,
+          payment_method: "pix",
+          postback_url: `${window.location.origin}/api/payevo/postback`,
         }),
       });
 
