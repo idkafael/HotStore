@@ -54,9 +54,14 @@ export default function PaymentModal({ isOpen, onClose, model, price = 1.00 }: P
     }
 
     // Polling Payevo - verificar status a cada 3 segundos
+    // IMPORTANTE: Como o webhook não está sendo chamado, dependemos apenas do polling
+    let pollCount = 0;
+    const maxPolls = 120; // 120 polls = 6 minutos (120 * 3 segundos)
+    
     const interval = setInterval(async () => {
       try {
-        console.log(`🔄 Verificando status da transação ${pixData.id}...`);
+        pollCount++;
+        console.log(`🔄 Verificando status da transação ${pixData.id}... (tentativa ${pollCount}/${maxPolls})`);
         const response = await fetch(`/api/payevo/status?id=${pixData.id}`);
         
         if (!response.ok) {
