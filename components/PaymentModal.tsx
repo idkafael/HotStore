@@ -40,61 +40,73 @@ export default function PaymentModal({ isOpen, onClose, model, price = 1.00 }: P
       return;
     }
 
-    // Polling do endpoint local que consulta o armazenamento atualizado pelo webhook
-    // O webhook atualiza o armazenamento, e este polling consulta localmente
-    // Se não encontrar no cache, o endpoint consulta a API PushinPay como fallback
+    // Polling conforme projeto de referência que funciona
+    // Verifica diretamente na API PushinPay a cada 3 segundos
     const interval = setInterval(async () => {
       try {
         console.log(`🔄 Verificando status do PIX ${pixData.id}...`);
-        const response = await fetch(`/api/pix/status-local?id=${pixData.id}`);
-        const data = await response.json();
+        const response = await fetch(`/api/pix/check?transactionId=${pixData.id}`);
         
-        console.log(`📊 Resposta do status-local:`, {
-          status: data.status,
-          id: data.id,
-          note: data.note
-        });
-        
-        // Sempre atualizar o status, mesmo se for 404 (retorna status "created" como padrão)
-        if (data.status) {
-          const previousStatus = pixStatus;
-          setPixStatus(data.status);
-          
-          if (previousStatus !== data.status) {
-            console.log(`✅ Status mudou de "${previousStatus}" para "${data.status}"`);
+        if (!response.ok) {
+          if (response.status === 404) {
+            console.log(`⏳ Transação ainda não encontrada na API (aguardando criação)...`);
+          } else {
+            const errorData = await response.json().catch(() => ({}));
+            console.error('Erro ao verificar pagamento:', {
+              status: response.status,
+              error: errorData.error || errorData.message || 'Erro desconhecido'
+            });
           }
+          return;
+        }
 
-          if (data.status === "paid") {
-            console.log(`🎉 PAGAMENTO CONFIRMADO! Liberando conteúdo...`);
-            // Pagamento confirmado via webhook ou API - liberar acesso automaticamente
-            if (model.entregavel) {
-              // Abrir link automaticamente após 2 segundos
-              setTimeout(() => {
-                console.log(`🔗 Abrindo entregável: ${model.entregavel}`);
-                window.open(model.entregavel, "_blank");
-                // Fechar modal após 3 segundos
-                setTimeout(() => {
-                  onClose();
-                }, 3000);
-              }, 2000);
-            } else {
-              // Se não houver entregável, apenas fechar após mostrar sucesso
+        const data = await response.json();
+        const transactionData = data.data || data;
+        let status = transactionData.status?.toLowerCase() || data.status?.toLowerCase();
+        
+        if (!status || status === 'unknown') {
+          status = 'pending';
+        }
+        
+        console.log('📊 Status do pagamento PushinPay:', status);
+
+        const isPagamentoConfirmado = status === 'paid' || status === 'approved' || status === 'confirmed';
+
+        if (isPagamentoConfirmado) {
+          console.log('✅✅✅ PAGAMENTO CONFIRMADO! Liberando conteúdo...');
+          setPixStatus("paid");
+          
+          // Pagamento confirmado - liberar acesso automaticamente
+          if (model.entregavel) {
+            // Abrir link automaticamente após 2 segundos
+            setTimeout(() => {
+              console.log(`🔗 Abrindo entregável: ${model.entregavel}`);
+              window.open(model.entregavel, "_blank");
+              // Fechar modal após 3 segundos
               setTimeout(() => {
                 onClose();
               }, 3000);
-            }
-          } else if (data.status === "created") {
-            console.log(`⏳ PIX ainda aguardando pagamento (status: created)`);
+            }, 2000);
+          } else {
+            // Se não houver entregável, apenas fechar após mostrar sucesso
+            setTimeout(() => {
+              onClose();
+            }, 3000);
           }
+        } else if (status === 'pending' || status === 'created') {
+          console.log('⏳ Aguardando pagamento... Status:', status);
+          setPixStatus(status as any);
+        } else if (status === 'canceled' || status === 'cancelled') {
+          console.log('❌ Pagamento cancelado. Status:', status);
+          setPixStatus("canceled");
         } else {
-          console.warn(`⚠️ Resposta sem status:`, data);
+          console.log('⚠️ Status:', status, '- Continuando verificação...');
         }
-        // Se não encontrar no cache, continuar tentando - o webhook ou API atualizará quando pago
       } catch (error: any) {
-        console.error(`❌ Erro ao verificar status do PIX:`, error.message);
+        console.error('Erro ao verificar pagamento:', error);
         // Continuar tentando mesmo com erro
       }
-    }, 3000); // Verificar a cada 3 segundos (rápido pois é consulta local)
+    }, 3000); // Verificar a cada 3 segundos conforme projeto de referência
 
     return () => clearInterval(interval);
   }, [pixData, pixStatus, model.entregavel, onClose]);
