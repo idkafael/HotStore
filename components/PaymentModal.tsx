@@ -58,7 +58,7 @@ export default function PaymentModal({ isOpen, onClose, model, price = 1.00 }: P
               response: errorData.response
             });
             console.error('🔍 Possíveis causas:');
-            console.error('  1. Token PushinPay incorreto nas variáveis de ambiente');
+            console.error('  1. SECRET_KEY Payevo incorreta nas variáveis de ambiente');
             console.error('  2. Transação não foi criada corretamente');
             console.error('  3. ID da transação está incorreto');
           } else {
@@ -90,7 +90,13 @@ export default function PaymentModal({ isOpen, onClose, model, price = 1.00 }: P
         
         console.log('📊 Status do pagamento Payevo:', status);
 
-        const isPagamentoConfirmado = status === 'paid' || status === 'approved' || status === 'completed' || status === 'confirmed';
+        // Payevo: pagamento confirmado quando paidAt não for null ou status for pago
+        const paidAt = data.paidAt;
+        const isPagamentoConfirmado = (paidAt !== null && paidAt !== undefined) ||
+                                     status === 'paid' || 
+                                     status === 'approved' || 
+                                     status === 'completed' || 
+                                     status === 'confirmed';
 
         if (isPagamentoConfirmado) {
           console.log('✅✅✅ PAGAMENTO CONFIRMADO! Liberando conteúdo...');
@@ -156,8 +162,19 @@ export default function PaymentModal({ isOpen, onClose, model, price = 1.00 }: P
         body: JSON.stringify({
           amount: valueInCents,
           description: `Pagamento - ${model.name}`,
-          payment_method: "pix",
-          postback_url: `${window.location.origin}/api/payevo/postback`,
+          paymentMethod: "PIX",
+          postbackUrl: `${window.location.origin}/api/payevo/postback`,
+          metadata: JSON.stringify({
+            modelId: model.id,
+            modelName: model.name,
+            orderId: `order-${Date.now()}`
+          }),
+          items: [{
+            title: model.name,
+            unitPrice: valueInCents,
+            quantity: 1,
+            externalRef: `model-${model.id}`
+          }]
         }),
       });
 
@@ -178,8 +195,10 @@ export default function PaymentModal({ isOpen, onClose, model, price = 1.00 }: P
   };
 
   const copyPixCode = () => {
-    if (pixData?.qr_code) {
-      navigator.clipboard.writeText(pixData.qr_code);
+    // Payevo retorna qrcode em pix.qrcode ou qr_code
+    const qrCode = pixData?.pix?.qrcode || pixData?.qr_code;
+    if (qrCode) {
+      navigator.clipboard.writeText(qrCode);
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
     }
@@ -366,14 +385,16 @@ export default function PaymentModal({ isOpen, onClose, model, price = 1.00 }: P
                   )}
                 </div>
 
-                {pixData.qr_code_base64 && (
+                {/* Payevo retorna qrcode como link, não base64 */}
+                {(pixData.pix?.qrcode || pixData.qr_code) && (
                   <div className="flex justify-center bg-white p-4 rounded-lg">
                     <Image
-                      src={pixData.qr_code_base64}
+                      src={pixData.pix?.qrcode || pixData.qr_code || ''}
                       alt="QR Code PIX"
                       width={256}
                       height={256}
                       className="w-64 h-64"
+                      unoptimized
                     />
                   </div>
                 )}
@@ -383,7 +404,7 @@ export default function PaymentModal({ isOpen, onClose, model, price = 1.00 }: P
                   <div className="flex gap-2">
                     <input
                       type="text"
-                      value={pixData.qr_code}
+                      value={pixData.pix?.qrcode || pixData.qr_code || ''}
                       readOnly
                       className="flex-1 bg-black border border-dark-border rounded px-4 py-2 text-white text-xs font-mono break-all"
                     />

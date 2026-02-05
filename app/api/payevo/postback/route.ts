@@ -13,23 +13,45 @@ export async function POST(request: NextRequest) {
     
     console.log('📥 Postback Payevo recebido:', JSON.stringify(payload, null, 2));
 
-    if (!payload.id) {
-      console.warn('⚠️ Postback recebido sem ID de transação');
+    // Verificar estrutura do postback conforme documentação
+    if (payload.type !== 'transaction' || !payload.data) {
+      console.warn('⚠️ Postback com formato inválido:', payload.type);
       return NextResponse.json({ error: 'Payload inválido' }, { status: 400 });
     }
 
-    const transactionId = payload.id;
-    const status = payload.status?.toLowerCase() || 'unknown';
-    const amount = payload.amount;
+    const transactionData = payload.data;
+    const transactionId = transactionData.id;
+    const status = transactionData.status?.toLowerCase() || 'unknown';
+    const amount = transactionData.amount;
+    const paidAt = transactionData.paidAt;
 
-    console.log(`📊 Postback - Transação ${transactionId}: Status = ${status}, Valor = ${amount}`);
+    console.log(`📊 Postback - Transação ${transactionId}: Status = ${status}, Valor = ${amount}, PaidAt = ${paidAt}`);
 
     // Verificar se o pagamento foi confirmado
-    const isPagamentoConfirmado = status === 'paid' || status === 'approved' || status === 'completed' || status === 'confirmed';
+    // Conforme documentação: quando paidAt não for null e/ou status mudar para pago
+    const isPagamentoConfirmado = (paidAt !== null && paidAt !== undefined) || 
+                                   status === 'paid' || 
+                                   status === 'approved' || 
+                                   status === 'completed' || 
+                                   status === 'confirmed';
 
     if (isPagamentoConfirmado) {
       console.log('✅✅✅ PAGAMENTO CONFIRMADO VIA POSTBACK!');
-      console.log(`💰 Transação: ${transactionId}, Valor: ${amount}`);
+      console.log(`💰 Transação: ${transactionId}, Valor: ${amount}, PaidAt: ${paidAt}`);
+      
+      // Aqui você pode:
+      // 1. Marcar orderId do metadata como pago
+      // 2. Liberar acesso/download do entregável
+      // 3. Registrar data.id para evitar dupla liberação (idempotência)
+      
+      if (transactionData.metadata) {
+        try {
+          const metadata = JSON.parse(transactionData.metadata);
+          console.log('📦 Metadata:', metadata);
+        } catch (e) {
+          console.log('📦 Metadata (string):', transactionData.metadata);
+        }
+      }
     } else if (status === 'canceled' || status === 'cancelled' || status === 'failed') {
       console.log(`❌ Pagamento cancelado/falhou: ${transactionId}`);
     } else {
@@ -41,7 +63,8 @@ export async function POST(request: NextRequest) {
       success: true,
       message: "Postback recebido com sucesso",
       transactionId: transactionId,
-      status: status
+      status: status,
+      paidAt: paidAt
     });
 
   } catch (error: any) {

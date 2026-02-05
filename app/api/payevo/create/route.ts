@@ -41,16 +41,37 @@ export async function POST(request: NextRequest) {
     // Preparar payload conforme documentação Payevo
     const payload: any = {
       amount: body.amount, // Valor em centavos
+      paymentMethod: body.paymentMethod || "PIX", // "PIX" em maiúsculas conforme documentação
       description: body.description || "Pagamento PIX",
-      payment_method: body.payment_method || "pix",
+      installments: 1, // PIX sempre 1 parcela
     };
 
+    // Adicionar postback se configurado
     if (postbackUrl) {
-      payload.postback_url = postbackUrl;
+      payload.postbackUrl = postbackUrl;
     }
 
+    // Adicionar metadata se fornecido
+    if (body.metadata) {
+      payload.metadata = typeof body.metadata === 'string' ? body.metadata : JSON.stringify(body.metadata);
+    }
+
+    // Adicionar customer se fornecido
     if (body.customer) {
       payload.customer = body.customer;
+    }
+
+    // Adicionar items se fornecido
+    if (body.items && body.items.length > 0) {
+      payload.items = body.items;
+    } else {
+      // Criar item padrão se não fornecido
+      payload.items = [{
+        title: body.description || "Pagamento PIX",
+        unitPrice: body.amount,
+        quantity: 1,
+        externalRef: `order-${Date.now()}`
+      }];
     }
 
     // Basic Authentication conforme documentação Payevo
@@ -124,18 +145,30 @@ export async function POST(request: NextRequest) {
       }, { status: 500 });
     }
 
-    console.log('✅ Transação criada com sucesso:', transactionData.id);
+    console.log('✅ Transação criada com sucesso:', transactionData.id || transactionData.data?.id);
 
+    // Extrair dados da resposta (pode vir em data ou na raiz)
+    const transaction = transactionData.data || transactionData;
+    
     // Adaptar resposta para formato compatível com frontend
     const adaptedResponse: CreateTransactionResponse = {
-      id: transactionData.id || transactionData.transaction_id,
-      status: transactionData.status || 'pending',
-      amount: transactionData.amount || body.amount,
-      qr_code: transactionData.qr_code || transactionData.pix_code || '',
-      qr_code_base64: transactionData.qr_code_base64 || transactionData.qr_code_image || '',
-      payment_link: transactionData.payment_link || '',
-      ...transactionData
+      id: transaction.id || transactionData.id,
+      status: transaction.status || 'waiting_payment',
+      amount: transaction.amount || body.amount,
+      paymentMethod: transaction.paymentMethod || 'PIX',
+      pix: transaction.pix || transactionData.pix,
+      // Compatibilidade com frontend (extrair qrcode do objeto pix)
+      qr_code: transaction.pix?.qrcode || transactionData.pix?.qrcode || '',
+      qr_code_base64: '', // Payevo retorna link, não base64
+      ...transaction
     };
+
+    console.log('📋 Resposta adaptada:', {
+      id: adaptedResponse.id,
+      status: adaptedResponse.status,
+      hasPix: !!adaptedResponse.pix,
+      hasQrCode: !!adaptedResponse.qr_code
+    });
 
     return NextResponse.json(adaptedResponse);
 

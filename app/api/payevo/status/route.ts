@@ -83,12 +83,18 @@ export async function GET(request: NextRequest) {
 
     console.log(`✅ Status consultado: ${transactionData.status}`);
 
+    // Extrair dados da resposta (pode vir em data ou na raiz)
+    const transaction = transactionData.data || transactionData;
+    
     // Adaptar resposta para formato compatível com frontend
     const adaptedResponse: TransactionStatusResponse = {
-      id: transactionData.id || transactionData.transaction_id || transactionId,
-      status: transactionData.status || 'pending',
-      amount: transactionData.amount || 0,
-      ...transactionData
+      id: transaction.id || transactionData.id || transactionId,
+      status: transaction.status || 'waiting_payment',
+      amount: transaction.amount || 0,
+      paymentMethod: transaction.paymentMethod || 'PIX',
+      pix: transaction.pix || transactionData.pix,
+      paidAt: transaction.paidAt || transactionData.paidAt,
+      ...transaction
     };
 
     return NextResponse.json(adaptedResponse);
