@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { SyncPayWebhookPayload } from "@/types/syncpay";
+import { notifyPaymentConfirmed } from "@/lib/discord";
 
 export const dynamic = 'force-dynamic';
 
@@ -84,10 +85,16 @@ export async function POST(request: NextRequest) {
       console.log('✅✅✅ PAGAMENTO CONFIRMADO VIA WEBHOOK!');
       console.log(`💰 Transação: ${transactionId}, Valor: ${value || amount}`);
 
-      // Aqui você pode adicionar outras ações:
-      // - Enviar email
-      // - Atualizar status no sistema
-      // - etc.
+      // Enviar notificação no Discord
+      try {
+        await notifyPaymentConfirmed(
+          transactionId,
+          value || amount || 0,
+          payload.description || payload.data?.description
+        );
+      } catch (discordError) {
+        console.warn('⚠️ Erro ao enviar notificação Discord (não crítico):', discordError);
+      }
     } else if (status === 'canceled' || status === 'cancelled' || status === 'failed') {
       console.log(`❌ Pagamento cancelado/falhou: ${transactionId}`);
     } else {

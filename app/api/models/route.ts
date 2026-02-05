@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { readFile, writeFile } from "fs/promises";
 import { join } from "path";
 import { Model } from "@/types/model";
+import { notifyNewModel, notifyModelDeleted } from "@/lib/discord";
 
 const modelsFilePath = join(process.cwd(), "data", "models.json");
 
@@ -51,6 +52,13 @@ export async function POST(request: NextRequest) {
 
     // Salvar no arquivo
     await writeFile(modelsFilePath, JSON.stringify(models, null, 2), "utf8");
+
+    // Enviar notificação no Discord
+    try {
+      await notifyNewModel(newModel.name, newModel.id);
+    } catch (discordError) {
+      console.warn('⚠️ Erro ao enviar notificação Discord (não crítico):', discordError);
+    }
 
     return NextResponse.json({
       success: true,
@@ -140,12 +148,24 @@ export async function DELETE(request: NextRequest) {
       );
     }
 
+    // Encontrar o modelo antes de deletar para notificação
+    const deletedModel = models.find((m) => m.id === id);
+
     // Salvar no arquivo
     await writeFile(
       modelsFilePath,
       JSON.stringify(filteredModels, null, 2),
       "utf8"
     );
+
+    // Enviar notificação no Discord
+    if (deletedModel) {
+      try {
+        await notifyModelDeleted(deletedModel.name, deletedModel.id);
+      } catch (discordError) {
+        console.warn('⚠️ Erro ao enviar notificação Discord (não crítico):', discordError);
+      }
+    }
 
     return NextResponse.json({
       success: true,
