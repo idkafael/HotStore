@@ -42,6 +42,10 @@ export interface TransactionStatusResponse {
   pix?: {
     qrcode: string;
     expirationDate?: string;
+    end2EndId?: string | null;
+    end_to_end_id?: string | null;
+    receiptUrl?: string | null;
+    receipt_url?: string | null;
   };
   paidAt?: string | null;
   [key: string]: any;
@@ -58,6 +62,10 @@ export interface PayevoWebhookPayload {
     pix?: {
       qrcode: string;
       expirationDate?: string;
+      end2EndId?: string | null;
+      end_to_end_id?: string | null;
+      receiptUrl?: string | null;
+      receipt_url?: string | null;
     };
     metadata?: string;
     [key: string]: any;

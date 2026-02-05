@@ -84,18 +84,23 @@ export async function GET(request: NextRequest) {
     // Extrair dados da resposta (pode vir em data ou na raiz)
     const transaction = transactionData.data || transactionData;
     
-    console.log(`✅ Status consultado: ${transaction.status || transactionData.status}`);
-    console.log(`📊 Dados completos da transação:`, JSON.stringify(transaction, null, 2));
-    console.log(`💰 PaidAt: ${transaction.paidAt || transactionData.paidAt || 'null'}`);
+    const finalStatus = transaction.status || transactionData.status || 'waiting_payment';
+    const finalPaidAt = transaction.paidAt || transactionData.paidAt;
+    const pixData = transaction.pix || transactionData.pix;
+    
+    console.log(`✅ Status consultado: ${finalStatus}`);
+    console.log(`💰 PaidAt: ${finalPaidAt || 'null'}`);
+    console.log(`🔗 End2EndId: ${pixData?.end2EndId || pixData?.end_to_end_id || 'null'}`);
+    console.log(`🧾 ReceiptUrl: ${pixData?.receiptUrl || pixData?.receipt_url || 'null'}`);
     
     // Adaptar resposta para formato compatível com frontend
     const adaptedResponse: TransactionStatusResponse = {
       id: transaction.id || transactionData.id || transactionId,
-      status: transaction.status || transactionData.status || 'waiting_payment',
+      status: finalStatus,
       amount: transaction.amount || transactionData.amount || 0,
       paymentMethod: transaction.paymentMethod || transactionData.paymentMethod || 'PIX',
-      pix: transaction.pix || transactionData.pix,
-      paidAt: transaction.paidAt || transactionData.paidAt || null,
+      pix: pixData,
+      paidAt: finalPaidAt || null,
       ...transaction
     };
     
@@ -103,7 +108,9 @@ export async function GET(request: NextRequest) {
       id: adaptedResponse.id,
       status: adaptedResponse.status,
       paidAt: adaptedResponse.paidAt,
-      hasPix: !!adaptedResponse.pix
+      hasPix: !!adaptedResponse.pix,
+      hasEnd2EndId: !!pixData?.end2EndId,
+      hasReceiptUrl: !!pixData?.receiptUrl
     });
 
     return NextResponse.json(adaptedResponse);

@@ -94,20 +94,31 @@ export default function PaymentModal({ isOpen, onClose, model, price = 1.00 }: P
         const paidAt = data.paidAt;
         const statusLower = status?.toLowerCase() || '';
         
+        // Verificar também outros campos que podem indicar pagamento
+        const hasEnd2EndId = data.pix?.end2EndId || data.pix?.end_to_end_id;
+        const hasReceiptUrl = data.pix?.receiptUrl || data.pix?.receipt_url;
+        
         // Log detalhado para debug
         console.log('🔍 Verificando pagamento:', {
           status: status,
           statusLower: statusLower,
           paidAt: paidAt,
-          data: JSON.stringify(data, null, 2)
+          hasEnd2EndId: !!hasEnd2EndId,
+          hasReceiptUrl: !!hasReceiptUrl,
+          pix: data.pix
         });
         
+        // Payevo: quando pago, o status pode mudar para "paid" ou "approved"
+        // E o paidAt será preenchido, ou pode ter end2EndId/receiptUrl
         const isPagamentoConfirmado = (paidAt !== null && paidAt !== undefined && paidAt !== '') ||
                                      statusLower === 'paid' || 
                                      statusLower === 'approved' || 
                                      statusLower === 'completed' || 
                                      statusLower === 'confirmed' ||
-                                     statusLower === 'paid_out';
+                                     statusLower === 'paid_out' ||
+                                     statusLower === 'success' ||
+                                     (hasEnd2EndId && statusLower !== 'waiting_payment') || // Se tem end2EndId e não está waiting, provavelmente foi pago
+                                     (hasReceiptUrl && statusLower !== 'waiting_payment'); // Se tem receiptUrl, foi pago
 
         if (isPagamentoConfirmado) {
           console.log('✅✅✅ PAGAMENTO CONFIRMADO! Liberando conteúdo...');
