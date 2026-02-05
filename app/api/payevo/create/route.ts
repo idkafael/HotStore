@@ -68,13 +68,22 @@ export async function POST(request: NextRequest) {
       secretKeyLength: PAYEVO_SECRET_KEY.length
     });
 
+    // Tentar requisição com diferentes formatos de header
+    const headers: Record<string, string> = {
+      'Authorization': authHeader,
+      'Accept': 'application/json',
+      'Content-Type': 'application/json'
+    };
+
+    console.log('📤 Headers da requisição:', {
+      'Authorization': headers.Authorization.substring(0, 30) + '...',
+      'Content-Type': headers['Content-Type'],
+      'Accept': headers.Accept
+    });
+
     const response = await fetch(url, {
       method: 'POST',
-      headers: {
-        'Authorization': authHeader,
-        'Accept': 'application/json',
-        'Content-Type': 'application/json'
-      },
+      headers: headers,
       body: JSON.stringify(payload)
     });
 
