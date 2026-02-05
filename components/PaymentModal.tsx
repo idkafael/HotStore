@@ -255,17 +255,13 @@ export default function PaymentModal({ isOpen, onClose, model, price = 1.00 }: P
             <div className="text-green-500 text-4xl mb-4">✓</div>
             <h3 className="text-2xl font-bold text-white">Pagamento Confirmado!</h3>
             <p className="text-gray-300">Obrigado pela compra!</p>
-            {model.entregavel && (
-              <button
-                onClick={() => {
-                  window.open(model.entregavel, "_blank");
-                  setTimeout(() => onClose(), 1000);
-                }}
-                className="w-full bg-green-500 hover:bg-green-600 text-white font-bold py-3 px-6 rounded-lg transition-colors"
-              >
-                Abrir Conteúdo Agora
-              </button>
-            )}
+            <p className="text-gray-400 text-sm">O conteúdo foi aberto automaticamente.</p>
+            <button
+              onClick={onClose}
+              className="w-full bg-purple-primary hover:bg-purple-primary/80 text-white font-bold py-3 px-6 rounded-lg transition-colors"
+            >
+              Fechar
+            </button>
           </div>
         ) : (
           <>
