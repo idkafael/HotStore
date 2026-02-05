@@ -23,37 +23,84 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    // Consultar status do PIX na PushinPay
-    // Endpoint correto baseado no projeto funcional: /api/pix/status/{id}
-    const apiEndpoint = `${PUSHINPAY_API_URL}/api/pix/status/${pixId}`;
+    // Tentar diferentes endpoints possíveis
+    const endpoints = [
+      `${PUSHINPAY_API_URL}/api/pix/status/${pixId}`,
+      `${PUSHINPAY_API_URL}/pix/status/${pixId}`,
+      `${PUSHINPAY_API_URL}/api/pix/${pixId}`,
+    ];
     
-    console.log("Consultando PIX na URL:", apiEndpoint);
+    let lastError: any = null;
     
-    const response = await fetch(apiEndpoint, {
-      method: "GET",
-      headers: {
-        "Authorization": `Bearer ${PUSHINPAY_TOKEN}`,
-        "Accept": "application/json",
-        "Content-Type": "application/json",
+    for (const apiEndpoint of endpoints) {
+      try {
+        console.log("Consultando PIX na URL:", apiEndpoint);
+        
+        const response = await fetch(apiEndpoint, {
+          method: "GET",
+          headers: {
+            "Authorization": `Bearer ${PUSHINPAY_TOKEN}`,
+            "Accept": "application/json",
+            "Content-Type": "application/json",
+          },
+        });
+
+        // Ler o texto da resposta primeiro
+        const responseText = await response.text();
+        
+        if (response.ok) {
+          try {
+            const data = JSON.parse(responseText);
+            console.log("✅ Status consultado com sucesso! Endpoint:", apiEndpoint);
+            return NextResponse.json(data as PixStatusResponse);
+          } catch (parseError) {
+            console.error("Erro ao fazer parse da resposta:", parseError);
+            return NextResponse.json(
+              { error: "Erro ao processar resposta da API", details: "Resposta não é JSON válido" },
+              { status: 500 }
+            );
+          }
+        } else {
+          // Se não foi bem-sucedida, tentar próximo endpoint
+          try {
+            const errorData = JSON.parse(responseText);
+            lastError = {
+              endpoint: apiEndpoint,
+              status: response.status,
+              error: errorData.message || "Erro ao consultar PIX",
+              details: errorData
+            };
+            console.log("Endpoint falhou, tentando próximo...");
+            continue;
+          } catch {
+            lastError = {
+              endpoint: apiEndpoint,
+              status: response.status,
+              error: "Erro ao consultar PIX",
+              details: responseText.substring(0, 200)
+            };
+            continue;
+          }
+        }
+      } catch (fetchError: any) {
+        console.error(`Erro ao conectar com endpoint ${apiEndpoint}:`, fetchError.message);
+        lastError = {
+          endpoint: apiEndpoint,
+          error: "Erro ao conectar com a API",
+          details: fetchError.message
+        };
+        continue;
+      }
+    }
+
+    // Se todos os endpoints falharam, retornar erro
+    return NextResponse.json(
+      { 
+        error: "Erro ao consultar PIX - todos os endpoints falharam", 
+        details: lastError
       },
-    });
-
-    if (!response.ok) {
-      const errorText = await response.text();
-      console.error("Erro ao consultar PIX:", errorText);
-      console.error("Status:", response.status);
-    }
-
-    const data = await response.json();
-
-    if (!response.ok) {
-      return NextResponse.json(
-        { error: data.message || "Erro ao consultar PIX", details: data },
-        { status: response.status }
-      );
-    }
-
-    return NextResponse.json(data as PixStatusResponse);
+      { status: 500 }
+    );
   } catch (error: any) {
     console.error("Erro ao consultar PIX:", error);
     return NextResponse.json(

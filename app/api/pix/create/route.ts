@@ -79,84 +79,100 @@ export async function POST(request: NextRequest) {
       payload.split_rules = body.split_rules;
     }
 
-    // Endpoint correto baseado no projeto funcional
-    // O endpoint correto é /api/pix/cashIn (não /pix/criar-pix)
-    const apiEndpoint = `${PUSHINPAY_API_BASE}/api/pix/cashIn`;
+    // Tentar diferentes endpoints possíveis conforme documentação
+    // Opção 1: /api/pix/cashIn (atual)
+    // Opção 2: /pix/criar-pix (conforme URL da documentação)
+    // Opção 3: /api/pix/create
+    const endpoints = [
+      `${PUSHINPAY_API_BASE}/api/pix/cashIn`,
+      `${PUSHINPAY_API_BASE}/pix/criar-pix`,
+      `${PUSHINPAY_API_BASE}/api/pix/create`,
+    ];
+    
+    let lastError: any = null;
     
     console.log("=== DEBUG PIX CREATE ===");
     console.log("URL Base:", PUSHINPAY_API_BASE);
-    console.log("Endpoint completo:", apiEndpoint);
     console.log("Token presente:", PUSHINPAY_TOKEN ? "Sim" : "Não");
     console.log("Payload:", JSON.stringify(payload, null, 2));
     
-    try {
-      const response = await fetch(apiEndpoint, {
-        method: "POST",
-        headers: {
-          "Authorization": `Bearer ${PUSHINPAY_TOKEN}`,
-          "Accept": "application/json",
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(payload),
-      });
-
-      const responseText = await response.text();
-      console.log("Status da resposta:", response.status);
-      console.log("Resposta (primeiros 500 chars):", responseText.substring(0, 500));
-
-      // Se a resposta foi bem-sucedida
-      if (response.ok) {
-        try {
-          const data = JSON.parse(responseText);
-          console.log("✅ PIX criado com sucesso! ID:", data.id);
-          return NextResponse.json(data as CreatePixResponse);
-        } catch (parseError) {
-          console.error("Erro ao fazer parse da resposta:", parseError);
-          return NextResponse.json(
-            { 
-              error: "Erro ao processar resposta da API", 
-              details: `Resposta não é JSON válido. Status: ${response.status}. Resposta: ${responseText.substring(0, 200)}`,
-              status: response.status
-            },
-            { status: 500 }
-          );
-        }
-      }
-
-      // Se não foi bem-sucedida, tratar erro
+    for (const apiEndpoint of endpoints) {
       try {
-        const errorData = JSON.parse(responseText);
-        console.error("Erro da PushinPay:", errorData);
-        return NextResponse.json(
-          { 
-            error: errorData.message || errorData.error || "Erro ao criar PIX", 
-            details: errorData,
-            status: response.status
+        console.log("Tentando endpoint:", apiEndpoint);
+        
+        const response = await fetch(apiEndpoint, {
+          method: "POST",
+          headers: {
+            "Authorization": `Bearer ${PUSHINPAY_TOKEN}`,
+            "Accept": "application/json",
+            "Content-Type": "application/json",
           },
-          { status: response.status }
-        );
-      } catch {
-        return NextResponse.json(
-          { 
-            error: "Erro ao criar PIX", 
-            details: `Status: ${response.status}. Resposta: ${responseText.substring(0, 200)}`,
-            status: response.status
-          },
-          { status: response.status }
-        );
-      }
+          body: JSON.stringify(payload),
+        });
 
-    } catch (fetchError: any) {
-      console.error("Erro na requisição fetch:", fetchError);
-      return NextResponse.json(
-        { 
-          error: "Erro ao conectar com a API PushinPay", 
-          details: fetchError.message,
-          endpoint: apiEndpoint
-        },
-        { status: 500 }
-      );
+        const responseText = await response.text();
+        console.log("Status da resposta:", response.status);
+        console.log("Resposta:", responseText.substring(0, 500));
+
+        if (response.ok) {
+          try {
+            const data = JSON.parse(responseText);
+            console.log("✅ PIX criado com sucesso! ID:", data.id);
+            console.log("✅ Endpoint funcionando:", apiEndpoint);
+            return NextResponse.json(data as CreatePixResponse);
+          } catch (parseError) {
+            console.error("Erro ao fazer parse da resposta:", parseError);
+            return NextResponse.json(
+              { 
+                error: "Erro ao processar resposta da API", 
+                details: `Resposta não é JSON válido. Status: ${response.status}`,
+                response: responseText.substring(0, 200)
+              },
+              { status: 500 }
+            );
+          }
+        } else {
+          // Se não foi bem-sucedida, tentar próximo endpoint
+          try {
+            const errorData = JSON.parse(responseText);
+            lastError = {
+              endpoint: apiEndpoint,
+              status: response.status,
+              error: errorData.message || errorData.error || "Erro ao criar PIX",
+              details: errorData
+            };
+            console.log("Endpoint falhou, tentando próximo...");
+            continue; // Tentar próximo endpoint
+          } catch {
+            lastError = {
+              endpoint: apiEndpoint,
+              status: response.status,
+              error: "Erro ao criar PIX",
+              details: responseText.substring(0, 200)
+            };
+            continue;
+          }
+        }
+      } catch (fetchError: any) {
+        console.error(`Erro ao conectar com endpoint ${apiEndpoint}:`, fetchError.message);
+        lastError = {
+          endpoint: apiEndpoint,
+          error: "Erro ao conectar com a API",
+          details: fetchError.message
+        };
+        continue; // Tentar próximo endpoint
+      }
     }
+
+    // Se todos os endpoints falharam, retornar erro
+    return NextResponse.json(
+      { 
+        error: "Erro ao criar PIX - todos os endpoints falharam", 
+        details: lastError,
+        message: "Verifique a documentação em https://app.theneo.io/pushinpay/pix/criar-pix para o endpoint correto"
+      },
+      { status: 500 }
+    );
 
   } catch (error: any) {
     console.error("Erro ao criar PIX:", error);
